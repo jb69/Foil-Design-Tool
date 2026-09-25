@@ -2,7 +2,7 @@
 
 Parametric hydrofoil design, analysis and printable molds, as six custom features in one Onshape Feature Studio. Give it an area, an aspect ratio and a handful of shape choices, and it builds the front wing, stabiliser, mast and fuselage, runs a speed sweep of lift, drag, trim, stability, structure and power, and then generates 3D-printable mold shells, a layup schedule and fabric cutting templates to build the parts in carbon.
 
-By JB69. Build 175.
+By JB69. Build 176.
 
 > **Read this first.** This is a modelling exercise by someone who designs props, not a foil builder. It started as a side quest to the B-series propeller blade generator: sizing a prop needs a drag curve, a drag curve needs a foil, and a nine-hour flight turned that into this. Every number it produces is a steady-state estimate: one speed, one weight, flat water, a rider who doesn't move. Trust the trend from one variant to the next. Treat absolute numbers, stall speed especially, as optimistic until you've calibrated them against a foil you've ridden. The guide explains how.
 
