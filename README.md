@@ -2,7 +2,7 @@
 
 Parametric hydrofoil design, analysis and printable molds, as six custom features in one Onshape Feature Studio. Give it an area, an aspect ratio and a handful of shape choices, and it builds the front wing, stabiliser, mast and fuselage, runs a speed sweep of lift, drag, trim, stability, structure and power, and then generates 3D-printable mold shells, a layup schedule and fabric cutting templates to build the parts in carbon.
 
-By JB69. Build 176.
+By JB69. Build 197.
 
 > **Read this first.** This is a modelling exercise by someone who designs props, not a foil builder. It started as a side quest to the B-series propeller blade generator: sizing a prop needs a drag curve, a drag curve needs a foil, and a nine-hour flight turned that into this. Every number it produces is a steady-state estimate: one speed, one weight, flat water, a rider who doesn't move. Trust the trend from one variant to the next. Treat absolute numbers, stall speed especially, as optimistic until you've calibrated them against a foil you've ridden. The guide explains how.
 
@@ -16,7 +16,7 @@ By JB69. Build 176.
 | `foil-design.zip` | All of the above as one download: [foil-design.zip](foil-design.zip) |
 | `docs/parameters.md` | Every dialog field with its limits, default and tooltip |
 | `assistant/` | An AI assistant skill that reads the tool's output and suggests what to change next, for Claude, ChatGPT and others |
-| `examples/` | Two full console logs to try the assistant on (the foil-assist wave foil from build 140, and the AFS Silk V2 + U Carve from build 171 in the current log format), the foil-assist speed sweep, and `examples/afs/`: AFS's production wings, stabs, masts and fuselages as parameter sets, measured from their published numbers and renders |
+| `examples/` | A full console log and speed sweep from the worked example, to try the assistant on |
 | `tools/` | Maintainer scripts that rebuild the parameter reference, the portable assistant file and the PDF guide |
 | `LICENSE` | CC BY-NC-SA 4.0 |
 
