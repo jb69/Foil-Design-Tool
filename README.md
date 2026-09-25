@@ -2,7 +2,7 @@
 
 Parametric hydrofoil design, analysis and printable molds, as six custom features in one Onshape Feature Studio. Give it an area, an aspect ratio and a handful of shape choices, and it builds the front wing, stabiliser, mast and fuselage, runs a speed sweep of lift, drag, trim, stability, structure and power, and then generates 3D-printable mold shells, a layup schedule and fabric cutting templates to build the parts in carbon.
 
-By JB69. Build 197.
+By JB69. Build 207.
 
 > **Read this first.** This is a modelling exercise by someone who designs props, not a foil builder. It started as a side quest to the B-series propeller blade generator: sizing a prop needs a drag curve, a drag curve needs a foil, and a nine-hour flight turned that into this. Every number it produces is a steady-state estimate: one speed, one weight, flat water, a rider who doesn't move. Trust the trend from one variant to the next. Treat absolute numbers, stall speed especially, as optimistic until you've calibrated them against a foil you've ridden. The guide explains how.
 
@@ -65,3 +65,7 @@ Discussion is on foil.zone: [Going down a rabbit hole: parametric foil design an
 ## Licence
 
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0). You may share and adapt this work for non-commercial purposes, with credit to JB69, under the same licence. See `LICENSE`.
+
+## Drive it from Claude
+
+`onshape_mcp/` is a small server (plain Python, nothing to install) that lets Claude Code work in your Onshape document directly: replace the Feature Studio, set feature parameters, regenerate, read every feature's status and the tool's notices and console logs (kept in variables from build 202 on), and export STL. Setup is in `onshape_mcp/README.md`: an Onshape API key in a file outside this folder, your document ids in `onshape_mcp/config.json` (copy the example), and the `.mcp.json` here registers the server when Claude Code starts in this folder. `developer/foil-featurescript-developer.skill` is the skill that lets it change the tool's code with its conventions intact; `assistant/` is the skill that reads your sweep.
