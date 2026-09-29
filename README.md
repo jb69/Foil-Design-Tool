@@ -2,7 +2,7 @@
 
 Parametric hydrofoil design, analysis and printable molds, as six custom features in one Onshape Feature Studio. Give it an area, an aspect ratio and a handful of shape choices, and it builds the front wing, stabiliser, mast and fuselage, runs a speed sweep of lift, drag, trim, stability, structure and power, and then generates 3D-printable mold shells, a layup schedule and fabric cutting templates to build the parts in carbon.
 
-By JB69. Build 207.
+By JB69. Build 230.
 
 > **Read this first.** This is a modelling exercise by someone who designs props, not a foil builder. It started as a side quest to the B-series propeller blade generator: sizing a prop needs a drag curve, a drag curve needs a foil, and a nine-hour flight turned that into this. Every number it produces is a steady-state estimate: one speed, one weight, flat water, a rider who doesn't move. Trust the trend from one variant to the next. Treat absolute numbers, stall speed especially, as optimistic until you've calibrated them against a foil you've ridden. The guide explains how.
 
@@ -17,7 +17,6 @@ By JB69. Build 207.
 | `docs/parameters.md` | Every dialog field with its limits, default and tooltip |
 | `assistant/` | An AI assistant skill that reads the tool's output and suggests what to change next, for Claude, ChatGPT and others |
 | `examples/` | A full console log and speed sweep from the worked example, to try the assistant on |
-| `tools/` | Maintainer scripts that rebuild the parameter reference, the portable assistant file and the PDF guide |
 | `LICENSE` | CC BY-NC-SA 4.0 |
 
 ## Why there's a PDF
@@ -28,11 +27,11 @@ Onshape only publishes custom features, so that they appear in its custom featur
 
 Used in this order in a Part Studio:
 
-1. **Foil wing**: area-first planform with superellipse, linear or double-taper chord, NACA 4-digit or tabulated sections (E817, E818, NACA 63-412, Clark Y) with a separate tip section blended along the span, sweep, tip drop, winglets, leading-edge bumps, washout, optional tube socket for a round fuselage.
+1. **Foil wing**: area-first planform with superellipse, linear or double-taper chord, NACA 4-digit or tabulated sections (E817, E818, NACA 63-412, Clark Y, MRC-16, MH 18, H105) with a separate tip section blended along the span, sweep, tip drop, winglets, leading-edge bumps, washout (with a roll number for the span line's anhedral), and a fuselage joint: a round tube socket, a square socket for a flat bar, a flat hub with pocket as production wings have, or a flat mount bolted straight through onto a bar, with a pad under the root that seats the wing at the incidence you typed.
 2. **Foil stabiliser**: the same geometry, placed by arm, optionally linked to the wing, with a production-style mount pad, tail fairing and bolt pattern pinned to its pivot. Double taper gives the full-base outline of current production stabs.
 3. **Foil performance**: no geometry. A speed sweep with lifting line, trim, stall, static margin, drag including mast, pod and fuselage, root bending, and an optional propulsion group for eFoil and foil assist.
 4. **Foil mast**: tapered, thickened toward the plate, root fillet, optional motor pod, board plate.
-5. **Foil fuselage**: a round tube that spigots into the wing and seats on the stab's mount.
+5. **Foil fuselage**: a round tube that spigots into the wing, or a hub-body fuselage that follows the wing's hub, seated on the stab's mount.
 6. **Foil mold**: two-part printable molds (three-part for the mast, its plate tray sized from the plate as modelled) with keys, pinch-off groove, plugs and bolt cones, tiled to your printer, closed with clamps or in a vacuum bag (vented groove, rounded edges, closing force reported), plus the layup with a tow, foam, monolithic or printed core (the printed core generated as a part), material and resin estimate, a stiffness check, cut templates, and a mold for the foam core itself.
 
 ## Getting started
@@ -65,7 +64,3 @@ Discussion is on foil.zone: [Going down a rabbit hole: parametric foil design an
 ## Licence
 
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0). You may share and adapt this work for non-commercial purposes, with credit to JB69, under the same licence. See `LICENSE`.
-
-## Drive it from Claude
-
-`onshape_mcp/` is a small server (plain Python, nothing to install) that lets Claude Code work in your Onshape document directly: replace the Feature Studio, set feature parameters, regenerate, read every feature's status and the tool's notices and console logs (kept in variables from build 202 on), and export STL. Setup is in `onshape_mcp/README.md`: an Onshape API key in a file outside this folder, your document ids in `onshape_mcp/config.json` (copy the example), and the `.mcp.json` here registers the server when Claude Code starts in this folder. `developer/foil-featurescript-developer.skill` is the skill that lets it change the tool's code with its conventions intact; `assistant/` is the skill that reads your sweep.
