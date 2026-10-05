@@ -2,7 +2,7 @@
 
 Parametric hydrofoil design, analysis and printable molds, as six custom features in one Onshape Feature Studio. Give it an area, an aspect ratio and a handful of shape choices, and it builds the front wing, stabiliser, mast and fuselage, runs a speed sweep of lift, drag, trim, stability, structure and power, and then generates 3D-printable mold shells, a layup schedule and fabric cutting templates to build the parts in carbon.
 
-By JB69. Build 230.
+By JB69. Build 233.
 
 > **Read this first.** This is a modelling exercise by someone who designs props, not a foil builder. It started as a side quest to the B-series propeller blade generator: sizing a prop needs a drag curve, a drag curve needs a foil, and a nine-hour flight turned that into this. Every number it produces is a steady-state estimate: one speed, one weight, flat water, a rider who doesn't move. Trust the trend from one variant to the next. Treat absolute numbers, stall speed especially, as optimistic until you've calibrated them against a foil you've ridden. The guide explains how.
 
@@ -27,7 +27,7 @@ Onshape only publishes custom features, so that they appear in its custom featur
 
 Used in this order in a Part Studio:
 
-1. **Foil wing**: area-first planform with superellipse, linear or double-taper chord, NACA 4-digit or tabulated sections (E817, E818, NACA 63-412, Clark Y, MRC-16, MH 18, H105) with a separate tip section blended along the span, sweep, tip drop, winglets, leading-edge bumps, washout (with a roll number for the span line's anhedral), and a fuselage joint: a round tube socket, a square socket for a flat bar, a flat hub with pocket as production wings have, or a flat mount bolted straight through onto a bar, with a pad under the root that seats the wing at the incidence you typed.
+1. **Foil wing**: area-first planform with superellipse, linear or double-taper chord, NACA 4-digit or tabulated sections (E817, E818, NACA 63-412, Clark Y, MRC-16, MH 18, H105) with a separate tip section blended along the span, sweep, tip drop, winglets, leading-edge tubercles, washout (with a roll number for the span line's anhedral), and a fuselage joint: a round tube socket, a square socket for a flat bar, a flat hub with pocket as production wings have, or a flat mount bolted straight through onto a bar, with a pad under the root that seats the wing at the incidence you typed.
 2. **Foil stabiliser**: the same geometry, placed by arm, optionally linked to the wing, with a production-style mount pad, tail fairing and bolt pattern pinned to its pivot. Double taper gives the full-base outline of current production stabs.
 3. **Foil performance**: no geometry. A speed sweep with lifting line, trim, stall, static margin, drag including mast, pod and fuselage, root bending, and an optional propulsion group for eFoil and foil assist.
 4. **Foil mast**: tapered, thickened toward the plate, root fillet, optional motor pod, board plate.
