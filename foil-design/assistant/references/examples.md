@@ -54,14 +54,3 @@ Real iterations with the tool, condensed. Copy the approach and the answer style
 
 **Answer given:** Foil wing *Min tip* on at 1 mm. If it still fails, *Split stations* up (30 to 50) and *Tip bias* 3 to 4. If both halves fail on a stab that's been moved, check the Foil mold and Foil stabiliser are the same build.
 
-## 6. A production wing modelled from published numbers
-
-**Paste:** AFS Silk V2 950 (superellipse n 1.4, end ratio 0.26, sweep 67 mm, S-curve drop 30 mm, 15 cm² winglets up at 60°, LE tubercles 5 mm at a 59 mm pitch from 15 to 82 %, NACA 4-digit 3 % root with a 1.5 % tip section from 40 %) and a U Carve 130 stab (double taper, Clark Y inverted, root tail 25 mm) at Arm 560 and Incidence −1.5. 85 kg all-up, no mast or fuselage in the Part Studio, take-off 18, cruise 22, max 36. Full console in the release's `examples/silk-v2-u-carve-console.txt`.
-
-**Read first:** `WING_INPUTS` shows `otherDrag_cm2=0` and there is no `MAST_INPUTS` or `FUSELAGE_INPUTS`, so every drag and L/D figure is wing plus stab only; add 10 to 15 N before comparing with a ridden foil. Stall 15 km/h against a take-off of 18: `max_local_cl_pct` 72 at 18, comfortable.
-
-**Diagnosis:** L/D peaks at 20.0 at 19 km/h and is 19.2 at the 22 km/h cruise, but falls to 11.1 at 36. `CL_stab` runs from −0.11 at take-off to −0.43 at 36 km/h and `static_margin_pct` from 41 to 163 %: the stab is carrying a large and growing download, which is stab-induced drag and a trim CG that moves 137 mm forward between take-off and top speed. The stab at −1.5° is doing more than it needs to; the AFS pairing is designed for a smaller angle than that.
-
-**Recommendation:** *Incidence* (Foil stabiliser) from −1.5 to −0.5. Expect the stab CL at 36 km/h to roughly halve, static margin to fall toward 60 to 80 % at cruise, the stance shift to shrink by a third, and drag at 30 km/h and above to fall a few newtons, with the low-speed margin still positive because the stab's own camber (Clark Y, inverted) keeps it downloaded. Second lever if the margin is still excessive: *Area cm²* (Foil stabiliser) 130 to 115. Leave the wing alone; it is a published shape and the check is whether the tool reproduces it, not whether it can be improved.
-
-**Next run:** compare `static_margin_pct` at 18 and 36, `trim_cg_mm` spread, and `L_D` at 30. If the `MAST_PLATE` or mold lines are in the paste, ignore them for this question: they are the build side.

@@ -316,1710 +316,8 @@ export enum TipCap
 // feature - so a pasted console log shows exactly what changed and what didn't, with no
 // ceiling on how many edits a day (unlike a single letter suffix).
 //
-// Changelog (append one line per bump; keep it here, not only in chat history):
-//   1.000  wing/stab/perf/mold  baseline reset when per-feature versioning was introduced
-//   1.001  wing/stab/perf        fixed corrupted tooltips - a find/replace regex had spliced
-//                                text into the middle of decimal bounds (e.g. "Limits 1.2-8"
-//                                became "Limits 1. <text> 2-8")
-//   1.001  mold                 ply schedule: Root/Mid/Tip plies (absolute counts) ->
-//                                Root/Mid/Tip fill % (targets); the absolute defaults, tuned
-//                                for the wing, overfilled the much thinner stab past 100%
-//   1.002  mold                 ply rounding floor -> ceil, plus a Compression % allowance:
-//                                a matched-die mold is normally deliberately overcharged and
-//                                closed under pressure, squeezing the excess out as flash -
-//                                floor could only ever undershoot, which was the wrong model
-//   1.003  mold                 added the required Filter to the Part query parameter
-//                                (Onshape rejects a Query param with no Filter/ALWAYS_HIDDEN);
-//                                removed the unused plyCounts variable
-//   1.004  mold                 removed a duplicate chordFactor(...) that had been copied into
-//                                the mold code without checking the shared library already had
-//                                one - caused "multiple visible overloads" errors at every call
-//                                site in the wing, stab and performance features too
-//   1.005  mold                 parting curve was built with skFitSpline (a 2D sketch op) fed
-//                                full 3D points; failed is2dPointVector, since the curve genuinely
-//                                varies in span, chord AND height (sweep + droop) at once. Switched
-//                                to opFitSpline, a 3D space-curve op, for both LE and TE curves
-//   1.002  wing/stab/perf        added an optional "Section polar" group (Foil wing/Foil
-//                                stabiliser): Analytic (unchanged default) or Polar summary -
-//                                13 numbers (zero-lift, lift slope, Cm, and CLmax/Cdmin/CL@Cdmin/k
-//                                at two Reynolds numbers) fitted from a real XFoil/XFLR5 run via
-//                                scripts/polar_summary.py. When set, replaces the thin-aerofoil
-//                                lift slope/alpha0/Cm, the flat-plate profile-drag build-up (now
-//                                a log-Re-interpolated drag-bucket parabola), and the wing's
-//                                Section CL max (now interpolated at the take-off Re) - the
-//                                lifting line, trim, static margin and structure are unchanged.
-//                                Verified: polar OFF reproduces the exact analytic baseline
-//                                (regression suite unaffected, 16/16); polar ON checked against
-//                                a Python twin and against a synthetic XFoil-format polar fit
-//                                with known ground truth (see polar_summary.py test in pitfalls)
-//   1.003  wing/stab             Profile gained three digitised sections (Eppler E817, E818,
-//                                NACA 63-412 - real coordinates from the UIUC Airfoil
-//                                Coordinates Database, checked against each one's published
-//                                max thickness/camber). Camber %/Camber pos % are hidden for
-//                                these (the table sets its own camber); Root/Tip thick % scale
-//                                the table's own thickness distribution instead. Analytic
-//                                alpha0/Cm for a tabulated profile now come from numerically
-//                                differentiating its digitised camber line (same thin-aerofoil
-//                                integral as NACA4, not a new approximation) rather than a
-//                                fixed table value - Section polar still overrides this if set.
-//                                NACA4 stays the default profile; nothing changes unless Profile
-//                                is switched. Custom pasted .dat import is still a later phase.
-//   1.004  wing/stab             Section polar's 13 fields now prefill from the real fitted
-//                                E817/E818/NACA 63-412 polars (fetched and fit this session)
-//                                when that Profile is selected and Section data is switched to
-//                                Polar summary - selecting a tabulated profile's real aero data
-//                                no longer needs copy-pasting 13 numbers in by hand. Falls back
-//                                to the previous generic defaults for NACA4 or no selection
-//   1.005  wing/stab             1.004 failed: "Duplicate feature parameter" - Onshape rejects a
-//                                parameter declared in more than one branch, even mutually
-//                                exclusive if/else ones. Replaced with Section data = Built-in,
-//                                which reads the fitted E817/E818/NACA 63-412 polars from a table
-//                                in code (resolvePolar/builtinPolar); Polar summary is back to one
-//                                plain declaration per field with generic defaults
-//   1.000  mast                  new Foil mast feature: symmetric NACA 00xx mast lofted between two
-//                                sections, bolted board plate (twin tracks, optional countersink),
-//                                optional lofted motor pod; publishes foilMastModel. Geometry only -
-//                                mast drag in Foil performance is a separate next step
-//   1.001  mast                  motor pod redesigned: nose tip on the mast chord (Nose start %),
-//                                elliptical fairing to full diameter (Fairing length), cylinder to a
-//                                flat rear face Aft extension behind the mast TE for a hand-modelled
-//                                motor mount. No protrusion ahead of the mast, no tail fairing.
-//                                Replaces Pod length, Pod X %, Nose % and Tail %
-//   1.002  mast                  pod nose is now a loft of ellipses from the mast's own local
-//                                thickness (x motor height, Blend height %) to the motor circle,
-//                                eased with zero slope at both ends so the pod swells out of the
-//                                mast faces instead of sitting on them as an appendage. Fairing
-//                                length default 100 -> 150 mm (about 2 x motor dia)
-//   1.003  mast                  countersinks moved to the plate underside (mast side) - bolts go in
-//                                from below into the board's track nuts; added a check that the
-//                                bolt heads clear the mast sides
-//   1.000  fuselage              new Foil fuselage feature: streamlined body (elliptical nose/tail
-//                                taper, reusing ellipseSplines) between the wing root pivot and the
-//                                stab's own Arm/Height (read via foilStabArm; foilStabHeight falls
-//                                back to 0 if not published), with bolted wing/stab mounts and an
-//                                optional bolted mast box sized and positioned from foilMastModel -
-//                                geometry only, drag comes later in Foil performance
-//   1.006  stab                  publishes foilStabHeight (the Height parameter was never
-//                                published before - Foil fuselage needs it to place its
-//                                centreline; without this it would have silently assumed the
-//                                stab sits level with the wing even when Height is nonzero)
-//   1.001  fuselage              fixed CANNOT_RESOLVE_ENTITIES: the hole cut targeted the union's id,
-//                                which creates no body - now targets this feature's solids minus the
-//                                hole tools. Box base sunk to the centreline (it was touching the
-//                                curved top only along a line); box bolt holes now run from the
-//                                fuselage underside with the countersink there (it was buried inside
-//                                the body at the box's own underside)
-//   1.006  wing                  optional Mount pad (on by default): flat-topped boss on the upper
-//                                root surface, fitted to the actual root section, with a row of
-//                                vertical bolt holes and underside countersinks; publishes
-//                                foilWingPad (top Z etc.) for Foil fuselage to sit on
-//   1.007  wing                  Mount pad removed (not streamlined) and replaced by an optional
-//                                Tube socket: streamlined nacelle on the root, axis through the
-//                                root's mid-thickness at its thickest point, bore open at the rear
-//                                for a round fuselage tube, optional vertical pins; publishes
-//                                foilWingSocket for the tube fuselage to use
-//   build 21                     version moved into the file's top comment header (was a separate
-//                                line above the import); header text brought up to date
-//   1.008  wing (build 22)       tube socket reshaped for low drag: no nose ahead of the wing - it
-//                                starts hidden inside the wing at the root's thickest point and
-//                                blends out of both surfaces (Blend length), extends behind the TE
-//                                by Rear extension, eases onto the tube (Rear fairing). Replaces
-//                                Rear face X, Nacelle length and Nose length
-//   build 23                     fuselage 2.000: rewritten as a round tube - starts at the bottom of
-//                                the wing socket bore, parallel past the mast, eased taper to Tail
-//                                dia at the stab, rounded tail cap, flat stab seat cut at the stab's
-//                                lowest root point, stab bolts, pin holes matching the wing socket.
-//                                Placement conflicts are warnings naming the fix, never changed here.
-//                                wing 1.009: socket publishes its pin pattern. stab 1.007: publishes
-//                                foilStabRoot (LE/TE X, lowest root Z). buildFoil returns rootPts
-//   build 24                     fuselage 2.001: body now at the socket's outside diameter, flush at
-//                                the rear face, with a spigot of Tube dia plugging into the bore
-//                                (two solids joined - a loft cannot step). Warns if the wing's Rear
-//                                fairing would spoil the flush joint. wing 1.010: Rear fairing
-//                                default 0; socket publishes rearFair
-//   build 25                     1.010/2.001 made the whole fuselage as fat as the nacelle's PEAK
-//                                diameter - wrong direction, high drag. Fixed: Rear fairing default
-//                                restored to 25 mm (0 refused) so the socket actually tapers down
-//                                near the tube; wing publishes rearDia (the diameter that taper
-//                                reaches at the rear face); fuselage body matches rearDia, not
-//                                nacelleDia - flush at the join, slender everywhere aft of it
-//   build 26                     fuselage 2.003: new Tail overhang toggle (default off) - the tail
-//                                (seat margin + Tail cap) is shortened/clamped to stay within the
-//                                stab's own trailing edge, so it never pokes out as a visible nub;
-//                                turn it on to always build Tail cap at full length. wing 1.012:
-//                                Socket depth can no longer reach past the wing's own leading edge
-//                                (was previously only checked against the blend, not the true LE)
-//   build 27                     fuselage 2.004: fixed "Cannot assign to constant xSeat1" - it is
-//                                reassigned when Tail overhang clamps it to the stab TE, so it must
-//                                be var, not const
-//   build 28                     fuselage 2.005: Tail cap + Tail overhang (boolean) replaced by one
-//                                Overhang parameter (0-200 mm). The tail cap always tapers smoothly
-//                                to a rounded point over Overhang, unconditionally - no toggle, no
-//                                clamping to the stab TE, no flat/abrupt end at any setting. Seat
-//                                margin running past the stab TE is still an independent warning
-//   build 29                     fuselage 2.006: fixed the seat cut running all the way across the
-//                                tail cap instead of stopping at xSeat1 - it was flattening the
-//                                taper the loft had already built, producing a chopped-off end
-//                                instead of the smooth rounded point Overhang was supposed to give
-//   build 30                     fuselage 2.007: Overhang redefined entirely - it is now the X of
-//                                the fuselage's tapered tip measured from the stab's own Arm, not a
-//                                trim added on top of Seat margin. Can be negative (tip ends before
-//                                the stab, even short of the seat). Removed a dead, always-true
-//                                check ("Seat margin runs past stab TE") that silently clamped away
-//                                any positive Seat margin on every regen - Seat margin extending past
-//                                the stab's own TE is correct by design, not a conflict
-//   build 31                     fuselage 2.008: fixed "Variable xTaperEnd not found" - the 2.007
-//                                rename to xTailDia missed one leftover use in the notice string.
-//                                Caught by grepping the WHOLE file for the old name after this fix,
-//                                not just the section that was edited
-//   build 32                     fuselage 2.009: tail tip's minimum radius floor was 10% of Tail
-//                                dia (1.6 mm across at the default) - reads as a visible flat/
-//                                squared end on shorter tapers, not a point. Dropped to 2% (0.3 mm)
-//   build 33                     fuselage 2.010: the tail tip was never actually elliptical - radius
-//                                was sqrt(1 - eased_x^2), nesting two different easings, which stays
-//                                near full radius for most of the taper then collapses sharply right
-//                                at the end (a squared cylinder with a cap, not a curve). Rewritten
-//                                so X and radius share one angle (sin/cos of the same phi) - a true
-//                                quarter-ellipse, narrowing the whole way, reaching zero on its own.
-//                                No more arbitrary minimum-radius floor (was 10%, then 2%) - just a
-//                                0.1% hair's-width value so the final sketch circle isn't exactly 0
-//   build 34                     fuselage 2.011: the real cause of "still squared off" when Overhang
-//                                is shorter than the stab - the seat cut (x1 = xSeat1, fixed) and the
-//                                stab bolt holes (full tail radius, centred on Arm) never accounted
-//                                for the tip already being at xEnd < xSeat1. A full-size bolt hole or
-//                                a seat box reaching past the actual tapered material rounds the
-//                                point off. Both now clip to the tube's real extent: the seat cut
-//                                stops at xEnd - 1mm, and any bolt that would fall in already-too-
-//                                thin material is skipped with a warning naming how many and why
-//   build 35                     Foil fuselage deleted entirely per the user's instruction, after
-//                                repeated fixes each addressed the specific defect shown without the
-//                                finished part being right. See the note above the version header.
-//                                Nothing else referenced foilFuselageModel, so nothing else changes.
-//                                foilStabRoot stays published by the stab (harmless, useful again
-//                                whenever the fuselage is rebuilt)
-//   build 36                     fuselage 3.000: rebuilt from a clean sheet (not the 2.x code).
-//                                Spigot into the wing socket bore, flush body at the socket's rear
-//                                diameter, parallel past the mast, eased taper to Tail dia, a true
-//                                quarter-ellipse tip (Tip length) ending at Overhang from the stab root
-//                                TE - the two are independent, so the tip is never squashed. Flat seat
-//                                confined to the stab footprint and the tube's own length; blind stab
-//                                bolt holes down from the seat, centred on the stab root mid-chord,
-//                                each checked against the local profile radius (skipped with a
-//                                warning if it would leave < 1 mm of wall). Mirrors a Python
-//                                reference model checked at Overhang 60/20/0/-20 before writing
-//   build 37                     fuselage 3.001: Mast pocket - a pocket in the top of the body shaped
-//                                to the mast's own NACA section plus Clearance, Pocket depth deep;
-//                                the mast sits on its floor (warning gives the matching mast Base
-//                                height). mast 1.004: publishes te and points so the pocket matches
-//   build 38                     mast 1.005: Base height limits -150..150 mm (was 0..150) - the
-//                                fuselage pocket floor can sit below the wing pivot, so the value the
-//                                fuselage warning asked for could not be entered. fuselage 3.002: the
-//                                stab bolt warning now says whether the hole would break through and
-//                                by how much, and gives the Overhang and Bolt depth that would fix it
-//   build 39                     fuselage 3.003: Pocket depth removed - the pocket floor is the mast's
-//                                own Base height, so moving the mast reshapes the pocket (depth and
-//                                position). Mast base above the fuselage: no pocket, warning with a
-//                                Base height to use. Too low (< 2 mm floor): pocket stops at the
-//                                limit, warning with the lowest Base height that fits
-//   build 40                     stab 1.008: Mount pad - a wedge under the stab root, flat horizontal
-//                                bottom, top following the root's own lower surface (so it fixes the
-//                                incidence against the fuselage seat and recuts when Incidence
-//                                changes). foilStabRoot.bottomZ is now the pad bottom, so the Foil
-//                                fuselage seat moves to it with no fuselage change
-//   build 41                     stab 1.009: removed the made-up "stab thinner than 1.5 mm" pad length
-//                                limit. It only guarded a fixed 0.5 mm overlap that would poke through
-//                                near the TE; the overlap now scales with local thickness (padLift),
-//                                so any Pad length works. Beyond the root chord the pad runs LE to TE
-//   build 42                     performance 1.003: mast, motor pod and fuselage drag in every speed
-//                                point (partsDrag). Mast: only the part between its base and the
-//                                surface (Wing depth - Base height) is wetted, 2D friction x thickness
-//                                form factor, plus Hoerner spray 0.24 q t^2. Pod/fuselage: friction x
-//                                body form factor on external wetted area. New CSV columns
-//                                drag_mast_N, drag_body_N; notice splits them out. Not in trim.
-//                                fuselage 3.004: publishes len and wettedExt from its own profile
-//   build 43                     performance 1.004: motor pod can be partly or fully out of the water.
-//                                Friction scales with its wetted fraction (from where the surface cuts
-//                                its round section), plus spray on its waterline width when it breaks
-//                                the surface; zero when fully out. Warnings for both cases (prop would
-//                                ventilate / not drive the foil). Previously anything not fully under
-//                                water counted as zero drag
-//   build 44                     performance 1.005: console mislabelled the pod's spray as the mast's
-//                                ("mast ... incl. spray 8.72 N" was 0.74 N mast + 7.97 N pod). Spray is
-//                                now reported separately; totals were already right
-//   build 45                     performance 1.006: foil assist - a high pod in or out of the water is
-//                                the rider's choice of mode, not a fault. Depth-dependent part data moved
-//                                into rideDepth(); cruise is also solved at the pod-out depth (surface
-//                                10 mm below the pod) and pod-in depth (10 mm above it), reported in
-//                                the notice and console. The pod state at Wing depth is information;
-//                                warnings only when a mode is physically impossible
-//   build 46                     wing/stab 1.013/1.010: Built-in polar now covers NACA 4-digit, not
-//                                just E817/E818/N63412. alpha0/cm0 are the EXACT thin-aerofoil
-//                                integral (zeroLiftAngle/momentCoefficient - same as Analytic, not a
-//                                fit). Lift slope, CLmax, drag bucket are a linear fit in (thickness,
-//                                camber) against 4 real XFoil polars (NACA 0008/0018/2412/4412),
-//                                clamped to the Polar summary fields' own limits. CLcd is anchored
-//                                through zero at zero camber by symmetry, not fit - the raw fit gave
-//                                a physically impossible negative value from one data point (0008)
-//   build 47                     wing/stab 1.014/1.011: fixed "precondition analysis failed" - the
-//                                Section data tooltip (extended for NACA4 Built-in) was 1042 chars,
-//                                over Onshape's 900 char limit on parameter descriptions. That single
-//                                failure cascaded into "Only previously defined parameters allowed in
-//                                comparisons" on every later use of polarSource, since the compiler
-//                                never registered the parameter as declared. Shortened to 756 chars
-//   build 48                     performance 1.007: optional Propulsion group (off by default). Thrust =
-//                                drag at each speed -> prop rpm from Wageningen B-series KT/KQ (same
-//                                tables as the B-series blade feature; reproduces its 4249 rpm / 58.6 kgf
-//                                static and 4906 rpm / 20.9 kgf at 30 km/h with 12 mOhm), then motor A
-//                                (8.27/kV), throttle, battery A/W, Wh/km, range, and top speed where
-//                                full-power thrust meets drag. Solved at Wing depth if the prop is under
-//                                water there, else at the pod-in depth; with Propulsion on, the foil
-//                                assist in/out depths include the prop disc. New CSV columns, variables
-//                                foilCruiseBatteryPower/foilCruiseWhPerKm/foilRangeKm/foilTopSpeed
-//   build 49                     performance 1.008: thrust couple in trim when Propulsion is on and the
-//                                mast has a pod. Thrust = drag, so thrust on the pod axis against each
-//                                drag force at its own height (stab baseZ, fuselage axisZ, mast mid-wetted
-//                                span, spray at the surface, pod axis) is a pure couple - no CG height
-//                                input needed. Powered trim CG / static margin in the notice, console and
-//                                CSV; warning if the powered static margin drops under 5 % (or below 0)
-//                                anywhere from take-off to max. Unpowered columns unchanged
-//   build 50                     performance 1.009: Pod height now sets the layout. Low pod = eFoil (motor
-//                                in the water at every rideable depth); high pod = foil assist, with a
-//                                motor mode (deep) and a pump/wave mode (shallow, pod out). Pod out only
-//                                counts if the wing can ride there (>= 2 MAC, the Wing depth free-surface
-//                                limit) - it used to accept any depth > 0 (80 mm with a 150 mm pod). The
-//                                "pod too low to clear the water" warning is gone: a low pod is an eFoil,
-//                                not a fault; the console gives the Pod height raise that makes it assist
-//   build 51                     mold 2.000 (Foil mold -> Foil mold, never run in Onshape before, so
-//                                rebuilt): block = part bounding box + Flange width + Base thickness,
-//                                split by a parting sheet lofted through every station's CAMBER LINE
-//                                (chord-line parting leaves a tongue of mold under a cambered TE),
-//                                extended straight through the flange and, at the wing socket, aimed
-//                                through the nacelle axis; part subtracted from both halves (keepTools).
-//                                Printer X/Y/Z + Tile margin: reports tiles per half (cuts, dowels and
-//                                registration keys are the next build). Ply schedule and gull check
-//                                kept. wing 1.015 / stab 1.012: model publishes profileName, camber,
-//                                camberPos, mirror for the mold's section rebuild
-//   build 52                     mold 2.001: did not parse - `box` is a reserved word in FeatureScript
-//                                (boxed values), used as a local name for the part's bounding box.
-//                                Renamed pbox (and all -> rows). lint_fs.py now knows `box`
-//   build 53                     mold 2.002: removed an unused splitNote variable (compiler warning only)
-//   build 54                     mold 2.003: parting loft failed LOFT_PROFILE_SOLID - opLoft builds a
-//                                SOLID unless told otherwise, and open curves cannot bound one. Added
-//                                bodyType SURFACE. (The block loft, two closed rectangles, was fine)
-//   build 55                     mold 2.004: surface loft refused (LOFT_INVALID). Parting rebuilt as a
-//                                SOLID curtain under the camber surface from closed planar sketch
-//                                profiles (spline + 3 lines, the foil's own loft pattern); lower half =
-//                                block INTERSECTION curtain, upper = block minus lower (keepTools);
-//                                no opSplitPart, no surface loft, no qContainsPoint
-//   build 56                     mold 2.005: stab molded, wing still LOFT_INVALID - one fit-spline ran
-//                                through the camber points AND the long chord-direction extensions,
-//                                with an 8 deg corner at the LE/TE; at a 6 mm tip chord that spline
-//                                wiggles into a self-intersection. Now: spline through the camber
-//                                line only, extensions as straight lines tangent to it (no corner)
-//   build 57                     mold 2.006: 56 broke the stab too (LOFT_PROFILE_FAILED: extension line
-//                                collinear with its straight mean line) and the wing was never the
-//                                profile (Python check: no self-intersection) but the LOFT - 32
-//                                profiles of wildly different proportions fold. Now: horizontal
-//                                extensions (LE/TE stay vertices), one two-profile ruled loft per
-//                                station pair, all subtracted from the block -> upper; second block
-//                                minus upper -> lower. Socket ramp is one straight line to the axis
-//   build 58                     mold 2.007: 57 got through every loft and the half booleans on the wing;
-//                                the cavity subtraction failed BOOLEAN_INVALID. Now cut per half with a
-//                                regenError naming the half and the tip thickness (wing default tip is
-//                                0.06 mm: 4 % of a 6 mm end chord x Cap end 25 %); warning under 1 mm
-//   build 59                     mold 2.008: wing LOWER cavity still invalid with socket off, tip drop 0
-//                                and a 0.14 mm tip - none of those. Parting stations sat exactly on
-//                                the part's seams (y = 0 mirror join, y = +/-h tip end face plane);
-//                                moved 0.4 mm off them so no sheet seam lies in a part face or edge
-//   build 60                     mold 2.009: WING MOLD CONFIRMED with tip drop 0 (59). With droop the
-//                                cavity cuts pass but evBox3d found no LOWER body: a lazy qSubtraction
-//                                query lost it after the cut. Lower is now frozen with evaluateQuery
-//                                right after it is made (like upper); the report counts bodies and
-//                                warns instead of failing if a half is split or missing
-//   build 61                     mold 2.010: BOTH MOLDS CONFIRMED (60, wing with droop). Tiling: each
-//                                half cut along the span into printer-sized tiles (and across the chord
-//                                if still too wide), Stagger joints offsets the upper cuts half a tile;
-//                                dowel holes (Pin dia/length/fit) drilled in the base layer centred on
-//                                every cut before cutting - two per span joint in the flanges, one per
-//                                tile across a chord joint. Cuts: construction plane split, with a
-//                                lofted-sheet fallback. Base thickness default 12 -> 15 (pins live in it)
-//   build 62                     mold 2.011: STAB MOLD TILED AND DRILLED on 61 (plane split works). Wing:
-//                                drilling could not resolve its target - the frozen lower half again went
-//                                stale after the cavity cut. Halves and tiles are now re-found by
-//                                geometry (touching the block top = upper, bottom = lower) before every
-//                                drill, cut and the report; no body identity is carried across a boolean
-//   build 63                     mold 2.012: TILING AND DOWELS CONFIRMED on wing and stab (62). Tiles are
-//                                now named "<Wing|Stab> mold <upper|lower> k of n [fwd/aft]" (setProperty
-//                                NAME), ordered from the -Y end, so the parts list and exports read
-//   build 64                     mold 2.013: NAMES AND SOCKET-ON CONFIRMED (63). Half keys: vertical
-//                                registration dowel holes through the parting in both flanges, one pair
-//                                per span tile a quarter tile in from the joint (clear of all cuts and
-//                                tile pins in both halves), Key dia/length, drilled into both halves
-//                                before the cuts. Key length capped so it cannot break the thinner half
-//   build 65                     mold 2.014: Key style = Printed keys (default) or Dowel holes. Printed:
-//                                tapered boss (Pin/Key dia, Key height, Key draft) on one side of every
-//                                joint, socket (+Pin fit, +0.3 mm) on the other; bosses point +Y, +X and
-//                                up from the lower half (print unsupported cavity-up); added after the
-//                                cuts, base sunk 1 mm, tiles found by footprint (moldTileAt). User's
-//                                choice: printed keys on every joint instead of dowels
-//   build 66                     mold 2.015: keys were too small (user). Defaults Pin dia 8 -> 12, Key dia
-//                                8 -> 14, Key height 5 -> 8, Base thickness 15 -> 20; limits to 30/25 mm
-//                                with checks against Base thickness - 4 and Flange width - 4
-//   build 67                     stab 1.013: Link profile (default on) - a linked stab now takes the
-//                                wing's section family (read from foilWingModel.profileName) as well as
-//                                area/AR/thickness/incidence; it kept NACA4 when the wing went to E818.
-//                                Own Camber % still applies for NACA4. Notice shows the profile used
-//   build 68                     mold 2.016: Surface allow. (signed cavity offset via an offset copy of
-//                                the part, opOffsetFace; 0 = off) and Pinch-off groove in the lower
-//                                half: planform outline (LE/TE per station, nacelle faired in) offset by
-//                                Land width and Land + Groove width (moldOffsetLoop: bevel convex, mitre
-//                                reflex), prisms lofted from polygon sketches, ring = outer - inner, floor
-//                                = ring minus the curtain lowered by Groove depth (opPattern copy), cut
-//                                from the lower half before the tiles
-//                                stab 1.014: Invert section (default on) for a linked tabulated profile -
-//                                67 showed an E818 stab the right way up LIFTS (CL0 +0.24, static margin
-//                                -39 %). Section mirrored in z, alpha0/Cm0 negated, polar alpha0/Cm/CLcd
-//                                negated; model publishes inverted, the mold follows it
-//   build 69                     mold 2.017: (1) the groove cut could not resolve the lower half - the
-//                                transient queries evaluateQuery returns are only valid until the next
-//                                operation changes the context; no body is now held across ANY
-//                                operation (moldHalves right before every boolean, tool bodies never
-//                                touch the block faces, printed keys look their tiles up after the tool
-//                                exists). (2) E818 wing: upper cavity invalid - the mean line through the
-//                                table's (0,0) leaves a drooped nose. Parting is now the true silhouette:
-//                                nose-most to tail-most point of the placed section along the midline
-//                                of its vertical extent, 30 samples per station (12 were too few for
-//                                E818's aft-loaded, sub-millimetre TE region). wing 1.016 / stab 1.015
-//                                publish teThick for it. Surface allow. CONFIRMED (stab, -0.2, in 68)
-//   build 70                     stab 1.016: Link profile default on -> off (user: the stab keeps its own,
-//                                symmetric, profile). Option and Invert section kept for a matched
-//                                cambered stab. No other change
-//   build 71                     stab 1.017: Link profile removed - the stab always uses its own Profile,
-//                                linked or not (user). Invert section kept as a stab-only field, shown
-//                                for a tabulated own profile, default on (cambered stab = camber down)
-//   build 72                     mold 2.018: Surface allow. removed (user: a 0.2 mm coat is within layup
-//                                tolerance; the offset refused thin tips). The cavity is cut with the
-//                                part itself again. opOffsetFace itself worked where the tip allowed it
-//   build 73                     fuselage 3.005: Stab block (default on) - a rectangular block from the
-//                                body axis up to the stab pad's underside, the pad's width, the seat's
-//                                length, joined before the seat cut and bolts: a block-on-block joint
-//                                with real bolt depth instead of a flat shaved off the tube (user: the
-//                                fuselage is high-stress and solid; M8). Tail dia default 16 -> 24 and
-//                                clamped to the body instead of erroring; Stab bolt dia 5 -> 6.8 (M8
-//                                tapping), Bolt depth 10 -> 16. stab 1.018: foilStabRoot publishes
-//                                padOn/padWidth/padLength; Pad width default 16 -> 24
-//   build 74                     fuselage 3.006: with the stab pad below the body top the block cannot
-//                                help and the seat still shaves the body (user screenshot: "worse").
-//                                Now warns with the exact Height to set so the pad sits on the block
-//                                above a full round body (stab Height 8 mm put the pad on the axis)
-//   build 75                     mold 2.019: wing with the tube socket on failed both tile-cut attempts
-//                                (SPLIT_FAILED) at the chordwise cut, which ran through the nacelle.
-//                                With the socket on and two tiles across the chord, the cut now goes
-//                                just ahead of the nacelle start (socket axisX - 5 mm) when both tiles
-//                                still fit, so the bore core stays in one tile. Cause not confirmed
-//   build 76                     mold 2.020: Socket plug (user: the socket bore needs a separate plug).
-//                                Cavity cut with a copy of the wing whose bore and pin holes are filled;
-//                                a half-round channel (bore dia + Pin fit) behind the rear face in both
-//                                halves; a separate "Wing socket plug" body, bore dia x (depth + Plug
-//                                extension). Chordwise cuts now target the halves only, not every solid
-//   build 77                     mold 2.021: Source model = Mast. The user molded the mast as a wing and
-//                                the first loft failed (span is Z, thickness Y). Mast mode works on a copy
-//                                laid flat (rotationAround X 90 deg + drop to Z -400: span -> -Y,
-//                                thickness -> Z), flat parting on the mid-plane (one box curtain), outline
-//                                = mast rectangle + plate for the groove, single-zone ply count, names
-//                                "Mast mold". Pod must be off (regenError). mast 1.006 publishes the
-//                                plate dimensions for the outline
-//   build 78                     wing 1.017, stab 1.019, mast 1.007, fuselage 3.007: every feature names
-//                                the part it makes (user: "each tool should name the parts appropriately")
-//                                - "Wing" / "Wing (half)", "Stabiliser" / "Stabiliser (half)", "Mast",
-//                                "Fuselage" - via nameSolids(), the same setProperty NAME the mold uses
-//   build 79                     mold 2.022: Ply schedule -> Layup. The fill-% schedule described a 30-60 %
-//                                empty cavity and its compression check could never fire. Now three
-//                                materials sized from the part: woven skins (Skin plies x Skin gsm on the
-//                                part's surface area), UD caps (Cap width % x Cap thick % of the section,
-//                                ply count from gsm / (1780 x Vf), cut list on the console), tow for the
-//                                rest of evVolume(part), resin from Fibre vol %, Overcharge %, cloth and
-//                                resin waste. Removed Ply thickness, Root/Mid/Tip fill %, Zone break 1/2
-//   build 80                     mold 2.023: cap ply counts round to the nearest ply and ply k runs to
-//                                where the stack is k - 0.5 plies thick (ceil left a 0 mm innermost ply
-//                                in the build 79 cut list: stab ply 19, wing ply 53)
-//   build 81                     wing 1.018, stab 1.020: Min tip (boolean, off) + Min tip mm (1): the
-//                                planform solve (now solvePlanform) raises End/Tip ratio until the section
-//                                at the cap start is at least Min tip mm; notice reports the ratio used.
-//                                User: the linked stab's 7.5 mm tip chord gave a 0.7 mm section - the
-//                                chord, not t/c, is the lever. mold 2.024: the tip warning checks the cap
-//                                start (not the cap end, which always runs out) and names End ratio first
-//   build 82                     fuselage 3.008 publishes stabBoltX (world X of each bolt hole made) and
-//                                stabBoltDia. mold 2.025: Bolt cones group (stab molds): a drafted frustum
-//                                per bolt from the pad face to Cone web under the root section's top,
-//                                unioned into the lower half - undersized, drilled to clearance after cure
-//                                (user, after reviewing a forged-carbon stab build video)
-//   build 83                     mold 2.026: moldTileAt picks the nearest body (evDistance) instead of the
-//                                first loose bounding box containing the point - on the drooped wing tips
-//                                that matched a neighbouring tile and left the half-key bosses floating as
-//                                un-named parts (user screenshot). Warning if any body is neither an upper
-//                                nor a lower tile after the keys. STAB_CONES console line and per-reason
-//                                "no bolt cones" notice for the stab cones that did not appear
-//   build 84                     fuselage 3.009: FUSELAGE_SEAT console line (seat note, bolt X list, warnings).
-//                                mold 2.027: STAB_CONES "off - reason" console line. Both so a pasted
-//                                console explains missing cones without the notice text
-//   build 85                     stab 2.000, fuselage 4.000, mold 2.028: stab-fuselage joint redesigned on
-//                                a production rear wing (user measured a home builder's STL: pad on the fuselage side,
-//                                22 wide, full chord, 45 % ramp, 7.4 proud; 40 mm tail fairing to 4 x 6;
-//                                two bolts 22 mm from the LE at 35 pitch). Stab: Mount pad group (Pad side
-//                                Top/Bottom, Pad width/height, Pad ramp %, Tail fairing: length, End
-//                                width, End thick) built as side-prism x plan-prism intersection
-//                                (buildStabMount); Mount bolts group (Stab bolts, Bolt from LE, Bolt
-//                                pitch, Bolt dia) as through holes; foilStabRoot publishes padSide, padZ,
-//                                topZ, tailOn, tailEndX, boltX, boltDia. Fuselage passes OVER the stab
-//                                with Pad side Top: flat seat at the pad plane (wants it ~4 mm under the
-//                                axis, warning gives the Height), block hangs under the body, tip ends at
-//                                the stab's tail end, tapped holes UP on the stab's pattern; Stab bolts /
-//                                Stab pitch removed; Bolt depth default 14. Mold cones from the stab's
-//                                pattern on either side (no fuselage needed)
-//   build 86                     stab 2.001: tail fairing is a loft of superellipse sections (exponent 12
-//                                at the TE -> 2 at the end, flat at the pad plane) instead of a box prism
-//                                - user: "the tail is square edged rather than a smooth profile". Pairwise
-//                                ruled lofts over 9 stations, unioned. Pad body unchanged (rectangle)
-//   build 87                     Build 86 confirmed: stab mount, tail, holes and mold cones (STAB_CONES made=2).
-//                                mold 2.029: over the pad's plan the parting is the pad-side skin (nose,
-//                                ramp, pad plane out to the block edge) instead of the camber line, with
-//                                stations 0.4 mm inside/outside the pad edge - the camber parting left the
-//                                tail fairing trapped in the upper half (its far face above the parting)
-//                                and the groove ran under it; the groove outline now follows the tail
-//                                plan. stab 2.002 publishes padRampPct, padX0, tailLength, tailEndWidth,
-//                                tailExp. fuselage 4.001: with a stab tail the tip's radius follows the
-//                                stab's plan law (scaled rT/hW) and the circles drop to stay tangent to
-//                                the pad plane - user: the fuselage tip "is a different shape"
-//   build 88                     Build 87 mold confirmed to regenerate (raised T at the pad plane, cones).
-//                                mold 2.030: pad-edge stations both inside the pad (hp - 0.5 / hp - 0.1)
-//                                so the step face is inside the part - the straddling pair left a 0.4 mm
-//                                lip over the skin beside the pad (user: "unattached surfaces").
-//                                stab 2.003: tail as one smooth loft (try), pairwise ruled as fallback -
-//                                the ruled segments read as terraces in the mold cavity
-//   build 89                     mold 2.031: the pad-plane parting is a prism (pad-side skin profile lofted
-//                                between y = +/-(hp - 0.05)) added to the curtain, instead of pad-edge
-//                                stations - their sloped step showed as slivers along the T (user, twice).
-//                                Spanwise tile cuts keep 5 mm clear of the stab pad / wing nacelle (moved
-//                                to the keep-out edge when both tiles still fit): the lower half's centre
-//                                cut ran along the tail and through the bolt cones (user: "pins interfere")
-//   build 90                     mold 2.032: pad prism walls 0.2 mm inside the pad wall (0.05 gave
-//                                BOOLEAN_INVALID on the lower cavity cut - near-coincident faces)
-//   build 91                     mold 2.033: still BOOLEAN_INVALID at 0.2 mm - so the prism top is now
-//                                0.15 mm under the pad skin (no face coincident with the pad face or
-//                                the ramp); the upper half forms the top 0.15 mm of the pad
-//   build 92                     Build 91 confirmed: stab mold regenerates with the prism T, smooth tail
-//                                and cones. mold 2.034: the stab's own through holes had left full-size
-//                                pins of mold in the lower cavity, into which the cones descended (user:
-//                                "top and bottom pins interfere"). Each pin is now cut away (cylinder
-//                                hole dia + 0.2, from the skin nearest the pad through the parting) before
-//                                the cones go in; the stub under it lies inside the drilled hole
-//   build 93                     mold 2.035: the pin cut targets only the half away from the pad - cutting
-//                                both took the cones' seat out of the pad-side half and left them floating
-//                                (user: Parts 28 and 29)
-//   build 94                     mast 1.008: Pod wall (4) + Cavity length (80): a blind motor cavity from
-//                                the pod's rear face, a placeholder to tune to the motor; publishes
-//                                podRearX, podNoseX, cavDia, cavLength. mold 2.036: the pod is molded with
-//                                the mast (user: "if a pod is included it should be in the mold ... the
-//                                motor pod should always have a plug"): cavity filled in the laid-flat copy,
-//                                pod bar in the groove outline, half-round channel behind the rear face,
-//                                "Mast pod plug" body (cavity + Plug extension). Pod regenError removed
-//   build 95                     mast 1.009: Pod wall replaced by Cavity dia (default 20, at most Motor dia
-//                                - 4); Cavity length default 10 - user: a small placeholder pocket to open
-//                                out to the motor by hand
-//   build 96                     mold 2.037: the pod cavity volume is subtracted from both halves after the
-//                                cavity cut (belt and braces for the fill in the copy) - user: "any cavity
-//                                in the pod should be part of the plug not the mast outer pieces"
-//   build 97                     mold 2.038: the pod plug is extracted from the part, not rebuilt from the
-//                                placeholder (user: custom inside geometry - tabs, hollow shell - modelled
-//                                before the mold must shape the plug). No fill in the copy; after the
-//                                cavity cut a channel of radius podDia/2 - 1 severs the void's cores from
-//                                the halves; the bodies touching neither block face are the cores; they
-//                                are unioned with a handle of that radius in the channel = "Mast pod plug",
-//                                whose shoulder forms the rear face. Plug Extension = handle length
-//   build 98                     mold 2.039: the plug is found by geometry (moldFloating) after the union -
-//                                the merged body kept a core's identity and the handle's query was empty
-//                                (CANNOT_RESOLVE_ENTITIES at the evBox3d)
-//   build 99                     mold 2.040: the plug existed after its join (build 98) but was gone at
-//                                naming (CANNOT_RESOLVE_ENTITIES on setProperty). Keep-out generalised to
-//                                a centre + half-width so the mast's pod band (y' = -podZ +/- podDia/2 +
-//                                5) also repels spanwise seams and the half keys (a half key at the aft
-//                                flange sat inside the plug channel); MAST_PLUG console lines count the
-//                                floating bodies after the plug, the groove and the tiles/keys; naming
-//                                the plug warns instead of throwing when it is missing
-//   build 100                    fuselage 4.002: tail-matched tip circles dip 0.3 mm below the pad plane
-//                                instead of tangent to it - the seat cut was BOOLEAN_INVALID the first
-//                                time it ran with Height -6.6 (tangent tool face on cylinders)
-//   build 101                    mold 2.041: moldFloating uses tight boxes; MAST_PLUG prints the cores count
-//                                and the plug's box against the block (user: no plug part, no error)
-//   build 102                    mold 2.042: build 101 trace - plug whole after its stage (1 floating,
-//                                3 cores), gone after the groove stage. The plug now carries an attribute
-//                                (foilPodPlug) and moldTrace prints solids / floating / the tagged plug's
-//                                box after every groove operation; naming uses the attribute first
-//   build 103                    mold 2.043: trace showed gFloor consumed the plug as a tool - the lowered
-//                                curtain touches the block bottom, was classed as a lower body, got the
-//                                cavity and channel cuts, and its severed pocket core was joined into the
-//                                plug, which then answered to the curtain's identity. `solids` now excludes
-//                                the lowered curtain. Groove cleared from the pod's band (user: keep the
-//                                pinch-off away from the pod)
-//   build 104                    Build 103 confirmed: plug survives every stage (6 cores from the user's
-//                                custom inside), fuselage seats on the pad. mold 2.044: stage traces
-//                                removed, one MAST_PLUG summary line kept
-//   build 105                    stab 2.004 publishes the mount contour (ramp + pad plane, world x/z) in
-//                                foilStabRoot.contour. fuselage 4.003: the seat is a prism cut to that
-//                                contour (spline top) instead of a flat plane, the block reaches the
-//                                contour's lowest point, and the tapped holes start at the local contour
-//                                height - user: "the fuselage should have the same contour as the stab
-//                                mounting block" (a wedge gap over the ramp)
-//   build 106                    fuselage 4.004: the block is confined to the flat of the pad (ramp end to
-//                                the tip start) at the pad plane - build 105's block hung below the tube
-//                                ahead of the nose and past the tip (user: "patchwork")
-//   build 107                    mold 2.045: mast mold in three parts (user): the left/right halves stop
-//                                0.5 mm into the plate's underside; a "Mast plate mold" tray (plate
-//                                outline + flange, block height, Base thickness beyond the board face)
-//                                is cut by the mast copy and keyed to the halves' end faces with two
-//                                printed keys; plate holes molded by the tray's pins; groove outline no
-//                                longer includes the plate band; mast halves named left / right
-//   build 108                    Build 107 confirmed: three-part mast mold regenerates. mast 1.010 publishes
-//                                the plate bolt layout. mold 2.046: the tray's pins were the copied holes
-//                                with the countersink at the free end (mushroom heads, user: would not
-//                                release) - pocket cleared and straight pins (bolt dia - 0.5) stood on the
-//                                mast's pattern; drill and countersink after cure
-//   build 109                    mast 1.011: Pod tilt (nose-down positive, rotates the pod and its cavity
-//                                about the pod centre), published as podTilt. performance 1.010: the thrust
-//                                vector is fixed to the body - angle to the flow = body angle - tilt; its
-//                                vertical component unloads the foil and, at the pod's X, pitches nose-down
-//                                (three trim passes); thrust along the axis (D / cos) feeds the prop; CSV
-//                                thrust_angle_deg, thrust_vert_N; console line. mold 2.047: pod channel and
-//                                handle along the tilted axis, keep-outs widened by the tilt spread
-//   build 110                    mast 2.000: Taper and top group - Top chord, Taper side (symmetric /
-//                                straight LE / straight TE), Top thick, Thicken from % (smoothstep to the
-//                                top); the blade is a loft through 13 sections by mastLaw(); the pod and
-//                                the plate use the local chord / LE; publishes chordTop, thickTop,
-//                                thickenFrom, taperSide, leXTop, plateXc (user: taper parameters and a
-//                                thicker top near the plate). performance 1.011: mast drag section at half
-//                                the submerged height. mold 2.048: trapezoid outline, plate centre from
-//                                plateXc, mean section for the UD cap volume
-//   build 111                    Build 110 confirmed (tapered, thickened mast and its mold). Wing mold
-//                                upper cavity BOOLEAN_INVALID on NACA 63-412 with Sweep exp / Drop exp 4,
-//                                still at 40 stations. mold 2.049: Split stations limit 80; Tip bias
-//                                (eta = 1 - (1 - u)^bias, default 2 ~ the old cosine packing) so
-//                                stations can crowd into the outer third
-//   build 112                    Build 111 confirmed (63-412 wing mold cuts at 50 stations, Tip bias 4).
-//                                mold 2.050: Cut templates group - a 1 mm plate beside the block with the
-//                                woven skin outline (planform developed along the droop, both halves) and
-//                                one tapered strip per UD ply (30 % chord line, Cap width %, to the ply's
-//                                end station) cut through it, + Trim margin; export the top face as DXF.
-//                                Mast: rectangles. Console TEMPLATES key (user: templates for cutting)
-//   build 113                    Build 112 confirmed (stab template plate, 12 shapes). mold 2.051: LAYUP
-//                                console line (the resin and material totals were notice-only); the skin
-//                                template key explains the single outline and the 45 deg outer ply
-//   build 114                    mold 2.052: tally holes (3 mm, one per cut) under each template outline, so
-//                                the count survives into the DXF (user: how many cuts of a template)
-//   build 115                    Build 114 confirmed (template plate, LAYUP line). mold 2.053: Cap thick %
-//                                is of the core inside the skins (section - 2 x skin plies x ply
-//                                thickness), so the skin count moves the UD count and skins + caps never
-//                                exceed a station (user: halving the skins changed nothing in the fill)
-//   build 116                    performance 1.012 publishes foilWingLoads / foilStabLoads: the spanwise
-//                                bending moment at the load factor (lltMoments, 21 stations; stab load =
-//                                max(cruise lift, 15 % W)). mold 2.054: Stiffness group (UD / woven / tow
-//                                moduli, Mast side load g) - EI per station from caps, skins and the tow
-//                                core, curvature integrated twice: tip deflection at n g and 1 g and root
-//                                cap stress for wing / stab; top deflection and base stress for the mast
-//                                under a side load at the plate (user: strength / flex)
-//   build 117                    Build 116 confirmed (wing 3.2 mm / 67 MPa, stab 0.6 mm / 35 MPa at 3 g).
-//                                mold 2.055: mast load case turned round - plate fixed, side force at the
-//                                fuselage end, moment F z peaking at the plate; reports the deflection at
-//                                the fuselage end and the cap stress at the plate (was base-fixed)
-//   build 118                    Build 117 confirmed (mast 111 mm / 323 MPa = the Python estimate).
-//                                mold 2.056: UD cap ply count is PER CAP and every UD template is cut
-//                                twice (one per face) - build 117 printed both caps' plies as one stack
-//                                cut once, which cannot be laid up as written (mast 25 x 0.34 mm in a
-//                                14 mm section). Mast cut list follows the taper / thickening law from
-//                                the plate down (was a constant section from the base thickness, while
-//                                the stiffness check credited the thicker top); mast templates are
-//                                trapezoids with the plate end at the bottom of the strip. Plate (user:
-//                                did you consider the plate): woven fill plies between its skins counted
-//                                in the layup and on its template (cut N: skins + fill, tally holes wrap
-//                                10 to a row), and the track bolt tension M / track spacing / bolts per
-//                                row on the STIFFNESS line
-//   build 119                    Mast-plate junction (user: high flex load there, no fillet, tab the two
-//                                surfaces with alternating UD). mast 2.001: Root fillet (opFillet on the
-//                                edges the mast/plate union made, in the plate underside plane; limited to
-//                                the room on the plate; notice says if Onshape refuses it), published as
-//                                rootFillet. mold 2.057: Cap run-out (0 = to the plate edge), Tab plies,
-//                                Tab length - cap plies run out over the fillet onto the plate, UD tabs
-//                                interleaved with them run Tab length down the mast; both in the cut list,
-//                                the templates (fold line notched) and the material totals. Shear allow:
-//                                STIFFNESS adds the junction check - cap force at the plate, shear over
-//                                the bonded run-out (1 + 2 x tabs interfaces) against Shear allow / 2,
-//                                the run-out needed, and the plate's bending stress between the tracks
-//   build 120                    mast 2.002: root fillet FILLET_FAILED on build 119 although the user could
-//                                fillet the seam by hand at 15 mm - the qCreatedBy(join, EDGE) selection
-//                                was wrong; the seam is now picked explicitly: edges of the joined solid
-//                                flat in the plate underside plane and inside the top section's footprint
-//                                (evBox3d per edge). Notice counts the seam edges
-//   build 121                    mast 2.003: FILLET_FAILED again on the explicit seam (2 edges: the fit
-//                                spline and the 0.8 mm TE line), and a plain try still shows the error, so
-//                                the fillet is now a ladder of try-silent attempts (all edges / no tangent
-//                                propagation / long edges only / half radius); console MAST_FILLET lists
-//                                the seam edges and the attempt that worked or every one that failed; on
-//                                total failure the notice says to add a manual Fillet feature before
-//                                Foil mold, which follows the part
-//   build 122                    Build 121 confirmed: MAST_FILLET "OK: long edges only, no propagation at
-//                                10 mm" (the 0.8 mm TE line edge is what fails); per-cap counts wing 22 /
-//                                stab 10 / mast 22 -> 15; junction 52 kN, 2.6 MPa with 4 tabs. mast 2.004:
-//                                that attempt is now first, the others stay as fallbacks; tooltip says the
-//                                fillet stops at the TE line
-//   build 123                    Build 122 confirmed (mast 17 / 25 from 60 %, fillet 15: 48.5 mm / 207 MPa;
-//                                template plate screenshot). mold 2.058: the template plate is sized from
-//                                the shapes' real V extent (vMin..vMax), not +/- the largest |v| - the
-//                                mast's one-sided strips left the top half of the plate empty
-//   build 124                    User: "this join has to be more stable than this" - relinking the stab at
-//                                20 % thickened its root and lifted the pad plane above the fuselage axis,
-//                                so the seat vanished at the Height that had worked. stab 2.005: Seat on
-//                                tube (default on) + Seat drop: after the build the whole stab is shifted
-//                                in Z so its seat plane (pad face, or the bare root surface) sits Seat drop
-//                                below the wing socket's tube axis (above it with the pad underneath);
-//                                Height is then reported, not typed; falls back to Height with no socket.
-//                                The published root / pad / contour values and foilStabHeight carry the
-//                                shifted position. fuselage 4.005: the no-seat warning names Seat on tube
-//   build 125                    User: "the mount for the stab on the fuselage should always be the same
-//                                size and position, not moving around". stab 3.000: the mount is a fixed
-//                                interface pinned to the stab pivot, not to the root section - Flat start
-//                                (ramp end), Tail start (where the tail fairing and the fuselage tip begin
-//                                to taper), Tail end, Bolt 1 at + Bolt pitch, all mm from the pivot;
-//                                replaces Pad ramp %, Tail length and Bolt from LE. The ramp runs from the
-//                                LE to Flat start, the pad flat to the TE, the fairing full-width from the
-//                                TE to Tail start then tapering to Tail end, so the seat plane, its length,
-//                                the tapped-hole pattern and the fuselage's tip are the same for every stab
-//                                with the same Arm. Warnings when the section does not fit the interface.
-//                                foilStabRoot still publishes padRampPct / tailLength (derived) for the
-//                                mold, plus tailStartX. fuselage 4.006: the tip tapers from tailStartX
-//   build 126                    Build 125 confirmed on the foil-assist document (Seat on tube, fixed
-//                                interface, 2 of 2 tapped holes). fuselage 4.007: stab-on-top seat accepts
-//                                a flat into the top of the body down to min(4 mm, 0.35 R) above the axis,
-//                                the mirror of the seat under it (it warned for any flat, so Seat on tube
-//                                with the pad underneath always drew a warning); warns when the stab's
-//                                clearance hole is not bigger than the tapping drill (user had 5 / 6.8)
-//   build 127                    mold 2.059: Parts group (default on) - every body the feature made goes
-//                                into one open composite part named "<Source> mold" (user: make the mold
-//                                parts a parts group); try-silent so a composite failure never fails the
-//                                mold. Source model tooltip no longer says the pod must be off
-//   build 128                    Build 127: the open composite left the parts listed (Onshape lists an
-//                                open composite's constituents; only a closed one nests them) and 4 keys
-//                                floated where a spanwise seam crossed the socket plug channel. mold
-//                                2.060: Parts group is a dropdown Closed (default) / Open / Off;
-//                                moldPrintedKey returns false and makes nothing when a key point is more
-//                                than 1 mm from any tile (the notice counts the skipped keys)
-//   build 129                    Build 128: the closed composite hid every mold piece and was itself hidden
-//                                in the parts list (user: "I have lost all my mold parts"). mold 2.061:
-//                                Parts group defaults to Off - loose, named parts as before; Open / Closed
-//                                remain as options
-//   build 130                    Stab mold LOFT_FAILED with Pad side Bottom (foil-assist stab on top of
-//                                the fuselage): the parting, pad prism and cones only handle a pad on
-//                                top. mold 2.062: a pad-under stab is molded on a Z-mirrored copy about
-//                                its pivot, with the model (incidence, washout, drop, dihedral, camber,
-//                                inverted) and the mount map (padSide, padZ, top/bottom, contour)
-//                                mirrored; the copy is deleted after the cavity cuts; the notice says to
-//                                turn the finished part over (a Y-symmetric part molded upside down)
-//   build 131                    User: "is it easier for the input to be the bolt size ... or make that
-//                                an option". BoltSize enum M4-M10 + Custom, boltDims() (close-fit
-//                                clearance / tapping drill). stab 3.001: Bolt dropdown (default M6),
-//                                Bolt dia only when Custom; publishes tapDia and boltName. fuselage
-//                                4.008: taps from the stab's named bolt, Stab bolt dia only for Custom;
-//                                FUSELAGE_SEAT names the drill and bolt. mast 2.005: plate Bolt dropdown
-//                                (default M8, clearance +0.1 mm looser), Bolt dia only when Custom
-//   build 132                    User: bolts everywhere, and the countersink from the standard. boltDims
-//                                carries ISO 10642 / DIN 7991 head dia and height; boltHead(). wing 1.019:
-//                                socket Pin bolt dropdown (M6 default, +0.1 mm clearance), Pin dia only
-//                                when Custom, publishes pinBolt. stab 3.002: Countersink (default on) on
-//                                the face away from the pad to the head diameter, publishes headDia.
-//                                mast 2.006: plate countersink to the standard head, not 2 x d. mold
-//                                2.063: cone note says drill AND countersink after cure
-//   build 133                    Stab mold CANNOT_RESOLVE_ENTITIES on the lower cavity cut (build 130,
-//                                seated pad-under stab): since build 124 Seat on tube shifts the stab
-//                                AFTER buildFoil, but foilStabModel kept the typed Height as baseZ, so
-//                                the mold's parting and cavity were built dz away from the part. stab
-//                                3.003 publishes the model at the shifted height; mold 2.064 also takes
-//                                the stab's baseZ from foilStabHeight (the value the shift produced)
-//   build 134                    User: "isn't it easier to make a 0 mm offset on the stab height always
-//                                have the mount interface sit on the centreline of the fuselage". stab
-//                                4.000: Height IS the seat plane's offset from the fuselage centreline
-//                                (0 = on it, -4 typical with the pad on top, +4 underneath); Seat on
-//                                tube and Seat drop removed; the stab is always shifted to it when the
-//                                wing has a socket, else Height is the pivot offset as before. Log:
-//                                height_mm (typed) + pivotZ_mm (effective). fuselage 4.009: accepts a
-//                                flat to the centreline both ways, warns only past it, names Height.
-//                                mold 2.065: build 133's stab mold reached the pinch-off and LOFT_FAILED
-//                                in its offset outline (the fixed-interface tail meets the root at a
-//                                shallow angle): moldOffsetLoop bevels near-parallel / far intersections
-//                                (miter limit 3 x offset), and a groove that still cannot be built is
-//                                skipped with a warning instead of failing the mold
-//   build 135                    Build 134 confirmed on the foil-assist document: all three molds
-//                                regenerate (stab mold complete on the mirrored pad-under stab, cones and
-//                                templates made). fuselage 4.010: unused stabHeight removed (Onshape
-//                                warned "set but not used")
-//   build 136                    fuselage 4.011: seat cut LOFT_FAILED with the pad plane just under a 19 mm
-//                                tail (Height -10): the cut region's floor was above the contour's nose end.
-//                                Floor now 2 mm under the lowest contour point. Stab mold confirmed on the
-//                                pad-top stab too (cones, templates)
-//   build 137                    mold 2.066: the build 134 miter limit in moldOffsetLoop took the pinch-off
-//                                groove off every mold (user: "where have my pinch-off grooves gone");
-//                                reverted to the build 51-133 offset. The try-silent skip with its
-//                                warning stays, so a groove that cannot be built no longer fails the mold
-//   build 138                    mold 2.067: the mast check reports the WORST cap stress along the height
-//                                and where it is, not only the plate's - plotting the foil-assist mast
-//                                showed 243 MPa at 494 mm (where the thickening begins) against 198 at
-//                                the plate; the notice says to start the thickening lower or thicken
-//   build 139                    Error texts that named removed fields: stab 4.001 "Mount pad reaches
-//                                outside..." now names Flat start / Bolt 1 at / Bolt pitch (was Pad X /
-//                                Pad length); mast 2.007 bolt-head and countersink errors name Bolt (the
-//                                dropdown), not Bolt dia
-//   build 140                    First public release. mold 2.068: Parts group tooltip no longer quotes a
-//                                build number (development history out of a published dialog)
-//   build 141                    All six Feature Type Descriptions rewritten for publishing (Onshape shows
-//                                them in the custom feature search): current scope, user terms, no internal
-//                                variable names or brand names
-//   build 142                    wing 1.021 / stab 4.003: Chord distribution gained Double taper (Break %,
-//                                Mid ratio, Tip ratio): a steep root taper then a gentle outer one, the
-//                                full-base stab shape (fitted to a measured production stab: break 28 %, mid 0.62, tip
-//                                0.21, and the solver then returns its published span and root for
-//                                130 cm2 AR 10). chordFactor/shapeIntegral take brk, mid; the model maps
-//                                publish them; chordFactor(m, eta) is the guarded accessor for consumers
-//                                (performance 1.014, mold 2.070 use it). Profile gained Clark Y (UIUC table,
-//                                flat lower surface from 30 %c, the section a builder described on a forum)
-//                                with a built-in polar fit from airfoiltools XFoil runs at Re 0.2 M / 1 M.
-//   build 143                    stab 4.004: LOFT_FAILED in buildStabMount with an inverted Clark Y and
-//                                the pad on top. An inverted table keeps its point order, so the mount's
-//                                index-based "upper" was the geometric lower surface: pad plane 6 mm
-//                                above the underside, zero overlap lift, a self-overlapping side profile.
-//                                The mount now swaps the halves by mid-chord Z (also fixes the far-face
-//                                countersink for any inverted stab). wing 1.022 / stab 4.004: Clark Y is
-//                                thickness-scaled about its flat lower surface, so the flat stays flat.
-//   build 144                    USER: the double taper "has the approximate shape but sharp transitions;
-//                                we need an option to use curves, including the tips". wing 1.023 / stab
-//                                4.005: Blend % rounds the break with a quadratic Bezier tangent to both
-//                                tapers (five stations across it); Tip cap gained Rounded + plan, which
-//                                shrinks the chord along the cap's quarter-ellipse as well as the
-//                                thickness, so linear and double tapers get rounded tips in plan. The
-//                                chord law is now one map (chordFactor(pl, eta); model maps carry blend,
-//                                capEta, planRound) and the area solver includes the plan rounding.
-//                                performance 1.015 / mold 2.071 use the map; the template plate no
-//                                longer adds its own linear cap taper when the law already rounds.
-//   build 145                    USER: "need to be able to build the tail into the profile rather than
-//                                depend on the mount pad". stab 4.006: Root tail (Tail length, Tail span %)
-//                                extends the trailing edge at the centreline with a smoothstep fade, all
-//                                aft whatever Align is, thickness held in mm (the section is stretched, not
-//                                fattened); law map keys tail/tailEta, tailFactor(pl, eta); the solve loop
-//                                re-derives the fraction as c0 settles; the notice's root chord includes it.
-//                                mold 2.072 places sections and the template plate the same way.
-//   build 146                    USER: "the wingtip leading edge corners are still sharp" (Rounded + plan
-//                                with Align line 0: the shrink was applied about the alignment line, so
-//                                the straight leading edge ran to a square corner). wing 1.024 / stab
-//                                4.007 / mold 2.073: the plan rounding's shrink is centred on the
-//                                mid-chord whatever Align line % is (capPlanFactor split out of
-//                                chordFactor; xOff gains (0.5 - pivotFrac) x shrink), so both corners
-//                                round. Align line % tooltips reworded for the double taper.
-//   build 147                    wing 1.025 / stab 4.008: Min tip shrank a double taper's Tip ratio from
-//                                0.21 to 0.128 ("raised to 0.128" in the notice). The 145 solve loop kept
-//                                iterating while the root tail settled and the raise line ran even when
-//                                the tip was already thick enough, scaling the ratio DOWN to the minimum.
-//                                Now the ratio only changes when the tip is too thin.
-//   build 148                    USER: "winglets, up/down or angle and area". wing 1.026 / stab 4.009:
-//                                Winglet (Off/Up/Down), Winglet area, Winglet angle, Bend radius. The
-//                                outer part of the developed half span bends on an arc then runs
-//                                straight; the bend start is solved so the chord law's area outboard of
-//                                it equals Winglet area; sections beyond it sit in planes square to the
-//                                bent path (plane normal (0, -cos phi, -sin phi)), so a 90 deg winglet
-//                                keeps its true section. Model maps carry wingletOn/Sign/Eta/Angle/R/
-//                                Height and spanProj. performance 1.016: lifting-line span = projected
-//                                span + 0.9 x winglet height when a winglet is on. mold 2.074: refuses a
-//                                winglet foil with a clear message (parting and tiling of a bent tip
-//                                are a later build).
-//   build 149                    mold 2.075: molds a foil with a winglet up to 75 deg. The parting curve
-//                                at a bent station is the section's midline in its own tilted plane
-//                                (the pull direction projects onto that plane's up axis, so the
-//                                silhouette points are unchanged), carried onto a VERTICAL curtain
-//                                station at the path's y as zMid / cos(phi) (tilted sketch planes
-//                                fold the ruled curtain: their floors fan inboard). Stations: bend
-//                                start, four along the
-//                                arc, just inside the tip, and one beyond the tip continued straight
-//                                along the winglet past the block. Keys map y to eta through the path
-//                                (wingletEtaFromY). Tiles still cut by Y planes; the block is the
-//                                part's box, so the winglet's height adds to every tile.
-//   build 150                    wing 1.027 / stab 4.010 / mold 2.076: with Tip cap = Rounded + plan the
-//                                thickness cap law multiplied the plan shrink (Cap end % squared: a
-//                                0.06 mm end face, BOOLEAN_INVALID cutting the cavity). The thickness
-//                                law now divides the plan factor out, so the end face is Cap end % of
-//                                the cap-start thickness as the tooltip says; the mold's tip advice
-//                                reports it that way.
-//   build 151                    mold 2.077: USER: "the mold works with the winglets off" (150 still
-//                                BOOLEAN_INVALID with them on). 149's parting over the winglet lifted
-//                                the midline by 1/cos(phi) on a vertical station: first order only,
-//                                and at the LE/TE the error (twist x chord x tan phi) left slivers.
-//                                Now the mid-surface over the bent tip is tabulated on 48 sub-stations
-//                                in their true tilted planes (moldWingletTable) and each curtain
-//                                station is that table cut by its vertical plane
-//                                (moldPartingPointsWinglet), so the parting is on the surface to the
-//                                table's spacing. Stations past the bend are chosen by y, not eta.
-//   build 152                    mold 2.078: the UPPER cavity now cuts; the LOWER failed with
-//                                CANNOT_RESOLVE_ENTITIES because the parting continued up the
-//                                winglet's line beyond the tip and met the block's top at the edge, so
-//                                the lower half touched both faces and was not a half. Beyond the tip
-//                                the parting now runs flat at the tip's height.
-//   build 153                    USER: "LE bumps as geometry despite the performance model ignoring
-//                                them". wing 1.028 / stab 4.011: LE bumps (Bump height, Bump pitch,
-//                                Bumps from %, Bumps to %): the leading edge moves +/- height/2
-//                                sinusoidally along the span, TE fixed, thickness in mm kept, fading
-//                                over half a pitch at each end; six stations per pitch. bumpOffset(pl,
-//                                eta, h); model maps carry bumpOn/Amp/Pitch/From/To. mold 2.079 places
-//                                its parting sections the same way (both parting functions) and adds
-//                                the same stations. Performance and the template plate use the smooth
-//                                outline. The winglet mold was confirmed on 152 (stab, 2 cm2, 45 deg).
-//   build 154                    USER: "the surf wing also has a complex gull wing we cannot shape" (front
-//                                view: flat centre to ~20 %, a distinct break, a near-straight drop to
-//                                ~85 %, then the tips rise). wing 1.029 / stab 4.012: Drop from % - the
-//                                drop law becomes ((eta - b)/(1 - b))^e beyond b, 0 before; dropShape /
-//                                dropSlope replace eta^e and powerSlope everywhere the span line is
-//                                built (sections, winglet frame, developed area, template plate, mold
-//                                parting, stiffness slope); model maps carry dropFrom. The tip rise is
-//                                the winglet. mold 2.080 for the shared helpers. LE bumps confirmed on
-//                                153 (the surf wing and its mold, first time).
-//   build 155                    removed powerSlope (Onshape: "Unused declaration" is an error in a
-//                                Feature Studio); dropSlope replaced its last caller in 154.
-//   build 156                    USER: "you missed the gull wing in the top foil in the picture, the
-//                                winglets are extra". The surf wing's front view is an S: flat centre,
-//                                steepest mid-span, levelling off again before the tips (measured
-//                                mid-line: 0, -1.4, -4.8, -10.3, -17.2, -24.7, -32.3, -39.2, -44.0,
-//                                -45.4 mm at eta 0..0.9) - a power law cannot level off (best 1.75 mm
-//                                RMS); a smoothstep between Drop from 3 % and Drop to 91 % with Tip
-//                                drop 45 fits to 0.3 mm. wing 1.030 / stab 4.013: Drop shape (Power
-//                                law / S-curve) and Drop to %; the drop law is one map (dropExp,
-//                                dropFrom, dropTo, dropSmooth) read by dropShape(d, eta) /
-//                                dropSlope(d, eta) from the planform map, the model maps or the
-//                                buildFoil literal; shapeIntegral lost its e argument. mold 2.081.
-//   build 157                    USER: "do we add a core option in the layup" (the 950 surf wing's layup came out
-//                                at 1.33 kg with 489 g of tow against a production wing's published 0.9 kg). mold 2.082:
-//                                Core = Tow fill / Foam core (Core kg/m^3, Core GPa) / Monolithic. Foam:
-//                                the fill volume is foam at its density with no fibre or resin inside
-//                                (5 % of its volume in resin to wet it), the stiffness uses Core GPa, the
-//                                buy list adds the foam volume and the sheet thickness. Monolithic: the
-//                                fill is woven at the skin's ply thickness, bought as cloth, Woven GPa.
-//                                Tow tex and Tow GPa show only for the tow fill. The surf wing with M80
-//                                foam should come out near 0.95 kg. Bumps, S-curve drop, winglets and
-//                                both molds were confirmed on 156 (a 950 surf wing and a 130 stab).
-//   build 158                    USER: "do a core mold now". mold 2.083: Mold of = The part / Its foam
-//                                core. Core: moldCoreBody lofts the part's sections offset inward
-//                                along their normals by one face's skins (coreOutline: offset loop,
-//                                re-read as x-monotonic faces, clipped where they close within
-//                                0.6 mm, cap groove of capF x (t - skins)/2 over Cap width % ramped at
-//                                its edges), through the part's stations, bumps and winglet frame;
-//                                mirrored; kept as a named part. The mold pipeline then runs on that
-//                                body with socket plug, cones, pad prism and the pad-under flip off.
-//                                USER: "leave the tips open to allow foam to expand out": the outermost
-//                                core section is carried straight out past the block side as a vent
-//                                body, cut with the cavity and deleted, so each tip is an open channel.
-//                                The foam core layup was confirmed on 157 (the surf wing: 0.62 kg).
-//   build 159                    USER: "a 4th option for the core is a 3d printed plastic core, if this
-//                                option is selected generate the model". mold 2.084: Core = Printed
-//                                core: the part-mold run also builds the core body (moldCoreBody
-//                                without a vent), splits it along the span to the longest printer axis
-//                                less margins (moldCut on Y planes), names the segments, and the layup
-//                                counts it at Core kg/m^3 (walls + infill) like a foam core. Mold of =
-//                                Its foam core with a printed core is refused (it needs no mold).
-//   build 160                    mold 2.085: the core mold CONFIRMED on 159 (9 tiles, keys, open tips)
-//                                but warned "11 bodies, 2 key bodies floating": the core's stations
-//                                started at eta 0.002, so the mirrored halves never touched and the
-//                                union left two core bodies, which the tile count then took for
-//                                stray keys. Core stations now start at the root plane, and the
-//                                mold's solids query excludes any foilCoreBody.
-//   build 161                    mold 2.086: Core = Printed core threw "First operand of logical or
-//                                conditional operator must be boolean, value is string": FeatureScript's
-//                                ?: is LEFT-associative, so a ? b : c ? d : e is (a ? b : c) ? d : e.
-//                                The layup message's nested ternary is now parenthesised.
-//   build 162                    mold 2.087: Core = Printed core: setAttribute CANNOT_RESOLVE_ENTITIES in
-//                                moldCoreBody - the printed core has no vent and setAttribute on the
-//                                empty vent query throws. Attribute and return only when there is one.
-//   build 163                    performance 1.017: the stab mold's STIFFNESS line read 0 mm / 0 MPa.
-//                                lltMoments clipped the circulation at zero before scaling it to the
-//                                published half lift, and a stab's circulation is negative all along
-//                                the span (download), so the whole distribution vanished. It now takes
-//                                the distribution's own sign; the load's magnitude was always right.
-//   build 164                    USER: "the printed core also needs some way to key the parts together,
-//                                either dowel holes or a frustum again". mold 2.088: dowel holes across
-//                                each printed-core joint, along the span, 15 mm into each segment at
-//                                the section's thickest point, diameter half the core thickness under
-//                                the cap groove (3-8 mm), skipped where that is under 4 mm or in the
-//                                winglet; the notice lists them. Dowels over frustums because a
-//                                printed peg on a 5-15 mm thick end would snap.
-//   build 165                    wing 1.031 / stab 4.014: Bumps from % now 3-90 (was 0-90). The Ultra
-//                                wing mold failed BOOLEAN_INVALID on the upper cavity with the bumps
-//                                starting at 0 and passed at 5 with nothing else changed (Split
-//                                stations 33 -> 15 had not helped). Mechanism not pinned down: the
-//                                first bump station coincides with the root seam station, or the
-//                                mirrored LE at the centreline; either way a wing has its mount there.
-//   build 166                    USER: tip section profiles, in the performance figures too. wing 1.032 /
-//                                stab 4.015: Tip profile (Same as root / NACA 4-digit / E817 / E818 /
-//                                NACA 63-412 / Clark Y), Tip camber %, Tip camber pos %, Blend from %.
-//                                Sections blend point by point (same cosine sampling) with a smoothstep
-//                                from Blend from % to the tip: buildSectionAt / sectionWeightAt on a
-//                                section map (sectionDefFromDefinition / sectionDefFromModel). Model maps
-//                                carry tipOn, tipProfileName, tipCamber/Pos, blendFrom, alpha0Tip, cm0Tip,
-//                                tipAreaFrac, polarClmax1/2Tip; cm0 and the drag-bucket fields are
-//                                published area-blended. performance 1.018: alpha0At(m, eta) in the
-//                                lifting line (aerodynamic twist), clMaxAt per station in stallAlpha and
-//                                maxLocalClRatio (the take-off margin and max_local_cl_pct are now
-//                                against each station's own CL max). mold 2.089: all four section
-//                                builders blend the same way.
-//   build 167                    The surf wing's mold with a tip section failed the upper cavity at 15
-//                                split stations and passed at 22: with the camber changing along the
-//                                span, the parting and the loft interpolated differently between
-//                                distant stations. wing 1.033 / stab 4.016: six stations across the
-//                                blend in the foil's loft; mold 2.090: twelve parting stations across
-//                                it, whatever Split stations says (as the bumps already had).
-//   build 168                    A Clark Y TIP still failed the cavity cut on 167. Cause: the Clark Y's
-//                                flat-side scaling (143) shrank only the upper surface, so as the tip
-//                                cap thinned the section it converged on the table's dipped underside
-//                                - a 2.5 % thick sliver with 3 % of reflexed camber, and the loft and
-//                                the parting no longer agreed. wing 1.034 / stab 4.017 / mold 2.091:
-//                                the whole Clark Y section is scaled vertically (the flat stays a
-//                                straight line, camber scales with thickness, the section tends to the
-//                                chord line as it thins). A Clark Y stab at 7.4 % now sits 1.9 % below
-//                                its chord line at 15 % chord instead of 3 %: slightly less camber.
-//   build 169                    The Clark Y tip STILL failed the cavity cut on 168. wing 1.035 / stab
-//                                4.018 / mold 2.092: one station list for both. foilStationEtas(m)
-//                                builds the foil's loft stations from the model-map keys (stations is
-//                                now published); buildFoil lofts through exactly that list and the
-//                                mold adds it to its parting stations, so the parting is ruled between
-//                                the stations the loft interpolates. Also: a Clark Y's zero-lift angle,
-//                                moment and drag-bucket centre now scale with its thickness, as its
-//                                section does since 168 (a 7.4 % production stab carries about 0.63 of
-//                                the table's camber, so less download than 143-168 reported).
-//   build 170                    mold 2.093: 169 made the Ultra mold fail that had passed on 165-167.
-//                                Adding the loft's stations to the parting put stations 0.1-0.3 mm
-//                                apart (the mold's tip-biased set against the loft's cap and winglet
-//                                stations); the mold deduped at 0.06 mm and lofted slivers. Stations
-//                                closer than 0.5 mm are now merged.
-//   build 171                    USER: revert to the last working mold. 169 and 170 both broke molds
-//                                that had passed (the AR 14 wing at 33 stations, the surf wing with a NACA tip). mold
-//                                2.094 = 167's parting stations again: the mold's own list, bumps,
-//                                twelve across a section blend, deduped at 1e-4 (the 0.5 mm merge of
-//                                170 would also have swallowed the stab pad's two 0.4 mm stations).
-//                                Kept from 168-169: the Clark Y scaled whole with its aero scaled to
-//                                match, foilStationEtas as the loft's station builder (same list as
-//                                167), and the published stations count. A Clark Y TIP section remains
-//                                unsupported by the mold: unexplained, and the user has dropped it.
-//   build 172                    mold 2.095: Split stations tooltip says a wing with a Tip profile needs
-//                                22 or more (171 CONFIRMED: the surf wing with a NACA tip passes at 22, not 15).
-//                                Release build.
-//   build 173                    mold 2.096: the mast plate tray is sized from the mast PART as it
-//                                stands (a copy split at the plate underside, bounding box of the plate
-//                                side), not from the Foil mast's plate numbers, so direct edits to the
-//                                plate - fillets, chamfers, another outline, a thicker plate - reach the
-//                                mold (user). The pocket-cleaning box (which squared off any edited
-//                                outline) is replaced by one clearing cylinder per bolt hole, head
-//                                diameter + 0.3 mm. Layup plate fill/area and the plate template use the
-//                                measured plate. MAST_PLATE console line reports measured vs nominal.
-//                                mast 2.009: publishes plateHeadDia and countersink for that clearing.
-//   build 174                    mold 2.097: Closing group - Clamps (as before) or Vacuum bag round the
-//                                whole closed mold (user). Bag: the block's outer edges are rounded so the
-//                                bag survives, the pinch-off groove is vented to the block's outer face at
-//                                each span end (in the bag the groove is a sealed pocket of air and the
-//                                flash has nowhere to go; the vents let the bag evacuate the groove and
-//                                the laminate through it), and the notice reports the closing force (bag
-//                                pressure x block plan area), the pressure on the laminate, and the groove
-//                                volume against the overcharge's flash volume (warning when the groove is
-//                                too small, either closing). Overcharge tooltip: 3-5 % under a bag.
-//   build 175                    mold 2.098: 174 did not compile - "Variable loop not found": the groove
-//                                outline `loop` was declared inside the first groove block and the new
-//                                perimeter code in the second. Declared at feature scope (pitfalls: block
-//                                scope, again).
-//   build 176                    mold 2.099: the core keeps clear of the wing's tube socket (user: the
-//                                the surf wing's printed core ran straight through the nacelle). With the socket
-//                                on, a foam or printed core starts at the nacelle radius + Core clear
-//                                (15 mm) as two mirrored halves; the root zone between is solid laminate,
-//                                counted in the layup (root fill mass, core volume reduced); the printed
-//                                core's segments and dowels are laid out per half. Warning when the
-//                                socket is on and Socket plug is off (the halves then mold the bore as
-//                                half cores with meeting pins). Stiffness line notes the bore is not
-//                                checked. moldCoreBody takes a start eta.
-//   build 177                    mold 2.100: Clear socket (boolean, default on) makes the core's socket
-//                                clearance optional (user); off = one core through the root as before.
-//   build 178                    mold 2.101: stab bolt cones ALWAYS start from the countersink face
-//                                (user): the cone's wide base sits on the countersunk skin and tapers
-//                                toward the other face, Cone web short of it, in the half that forms the
-//                                countersunk face; the through hole is filled in the copy the cavity is
-//                                cut from, so neither half molds a pin (the old pad-side cones with a
-//                                pin cut from the far half could not release when the countersink was
-//                                on the far half). Cones no longer need the Mount pad; a pad's hole is
-//                                left solid above the web to drill. stab 4.019: publishes cskSide.
-//   build 179                    mold 2.102: the bolt fill and cones measure the root section WITH the
-//                                stab's root tail (moldRootSection, placed as buildFoil places station
-//                                0), so a bolt in the tail gets its cone and its hole filled; 178 saw the
-//                                0.6 mm trailing edge of the plain section there, skipped the cone and
-//                                left the pin in both halves (an AR 14 stab, bolt at +35 mm).
-//   build 180                    stab 4.020: warns when a countersink leaves under 1 mm of laminate at a
-//                                bolt (that stab: M5 2.9 mm deep in the 3.1 mm root tail - the molded
-//                                countersink is then a flat disc and the bolt cannot be countersunk).
-//                                mold 2.103: the cone note says when a bolt's cone is shorter than its
-//                                countersink is deep, with the same three fixes.
-//   build 181                    mold 2.104: the countersink is formed by the countersunk half alone.
-//                                178 filled only the through hole, so the part of the countersink void
-//                                above the parting became a ring of the OTHER half, wide at the parting,
-//                                that could never release (user: the mushroom on bolt 0, the disc on
-//                                bolt 1). Now the fill covers the head diameter, stops 0.3 mm inside each
-//                                skin (no pocket in the floor, no boss on the part), and a 90 deg cone at
-//                                head diameter is molded on the base of the tapered cone, clipped to the
-//                                cone's own height when the section is too thin.
-//   build 182                    mold 2.105: printed core segments keyed with TWO dowels per joint (user),
-//                                either side of the thickest point about a quarter chord apart, each
-//                                moved toward the middle until the core is 4 mm thick there (the cap
-//                                groove counted only inside the cap band); one dowel at the thickest
-//                                point when a narrow section has no room for two.
-//   build 183                    mold 2.106: 182 placed no dowels at all - the walk toward the thickest
-//                                point had its stop test inverted and never ran. Rewritten as a plain
-//                                loop that steps toward the middle and stops there.
-//   build 184                    fuselage 4.013: counts its solids at the end and warns when there is
-//                                more than one, with each extra body's X range, so a severed tip or a
-//                                loose spigot is named rather than found in the Parts list (user saw two
-//                                fuselage parts; a duplicate feature was the mold's cause the same day).
-//   build 185                    wing 1.036: Fuselage joint = Round tube socket (as before, unchanged) |
-//                                Square socket (rectangular bore in the same nacelle) | Flat hub with
-//                                pocket (user, after production images: a flat-topped hub on
-//                                the root, a recessed pocket for the fuselage's tongue, blind holes for
-//                                bolts that come down THROUGH the fuselage into the wing). Publishes
-//                                foilWingHub; foilWingSocket.on is 0 for the hub, so the fuselage and
-//                                mold treat it as no socket until they learn the hub (next builds). The
-//                                pocket's dimensions are inputs so a measured production fuselage can be
-//                                matched; presets to follow when fuselages are measured.
-//   build 186                    wing 1.037: the hub starts at the root's apex (thickest point) and runs
-//                                aft only, its top level with the apex (Hub above apex, default 0) so it
-//                                never stands above the root profile, and smaller defaults (user, from
-//                                the first regeneration: 32 x 110, pocket 22 x 70 x 4).
-//   build 187                    wing 1.038: the hub stops ahead of the trailing edge (shortened with a
-//                                note when Hub length would pass it), its underside follows the mean
-//                                line from the apex to its end (a tilted bottom, so it stays inside the
-//                                wing instead of hanging over the thinning aft skin), its top can sit
-//                                below the apex (Hub above apex -5..20, default -1: recessed a little),
-//                                and the join to the wing is filleted (Hub fillet, 3 mm) before the
-//                                pocket is cut (user).
-//   build 188                    wing 1.039: the hub's underside is flat, level with the trailing edge
-//                                (user), instead of tilted to the mean line; it may run to 1.5 mm ahead
-//                                of the trailing edge.
-//   build 189                    (dropped: the hub as a recess; the user chose the block of 186)
-//   build 190                    wing 1.041: the block hub with the user's settings as defaults (40 x 150,
-//                                level with the apex, pocket 24 x 100 x 5 from 20, three M6 at 25 mm
-//                                pitch from 10, 12 mm deep) and no trailing-edge clamp (the block may
-//                                run past the TE, underside level with it, join filleted). Square
-//                                socket: a rectangular nacelle (rounded corners) sized to the bore, not
-//                                the round one. Both sockets: the cross pins are countersunk bolts
-//                                (Bolts / Bolt / Bolt dia / Bolt pitch, 90 deg countersink on the
-//                                nacelle's top to the head diameter), and Socket height moves the bore's
-//                                axis up or down from the mid-thickness (user).
-//   build 191                    mold 2.107: 190 did not compile - "Variable zT set but not used" in the
-//                                printed core's dowel code (left over from 182's two-dowel rewrite;
-//                                Onshape treats it as an error). Removed. wing 1.042: with Hub above
-//                                apex 0 the hub's top is tangent to the skin at the apex and the join
-//                                fillet failed on that edge; the fillet now takes only the join edges
-//                                below the top (the side walls into the skin) and skips the tangent one.
-//   build 192                    wing 1.043: the pocket is held inside the hub - its end at least 4 mm
-//                                (the hub's end wall) ahead of the hub's rear end, shortened with a note
-//                                when Pocket from + Pocket length would run out through it (user's
-//                                screenshot: Hub length 100 with a 100 mm pocket from 20).
-//   build 193                    wing 1.044: Square socket defaults 19 x 25 mm, the home-build plan's
-//                                extruded aluminium flat bar (user), tooltips say so; the bar is 25 high
-//                                so the nacelle is 35 mm tall with a 5 mm wall - turn the bar flat (25
-//                                wide, 19 high) for a lower nacelle if the fuselage is your own.
-//   build 194                    mold 2.108: the mold follows every joint the wing can make (user).
-//                                Square socket: the bore is filled with a box, the plug is a box, its
-//                                channel a rectangular slot, seams keep clear of the nacelle's real
-//                                width. Countersunk socket bolts: hole and countersink filled in the
-//                                cavity copy, and a countersink + tapered cone hangs from the upper half
-//                                (the countersunk face) to a web above the bore, as the stab's cones do.
-//                                Flat hub: seams keep clear of the hub, the chord cut goes ahead of it,
-//                                its blind holes are filled and molded as tapered cones hanging from the
-//                                pocket's boss on the upper half, and a foam or printed core keeps clear
-//                                of the hub's width. wing 1.045: the square bore's published size
-//                                includes the clearance, as the round one's does.
-//   build 195                    mold 2.109: the mold takes the joint from the part as it stands, not
-//                                from the published numbers (user: "use the actual shape not the
-//                                calculated one"). No fill copies: the cavity is cut from the wing with
-//                                its bore, countersunk bolt holes, hub pocket, holes and fillet as
-//                                modelled; the socket plug is the bore's own core (severed by the plug
-//                                channel and joined to a handle, the pod plug's method), the bolt
-//                                shanks are cleared through the nacelle's walls so no pin ties it, the
-//                                countersinks mold from the upper half, and the hub's straight hole
-//                                pins are cleared for tapered cones only with Bolt cones on. wing
-//                                1.046: the hub's join fillet is built where it cannot fail (user: "the
-//                                fillets must work every time") - a block taller than the skin by the
-//                                radius, split from a copy of the wing to keep the piece above the
-//                                skin, unioned, its closed join loop filleted (ladder r, 0.6 r, 0.35 r),
-//                                then the top cut back with a wing-shaped tool; the filleted block
-//                                stops Hub fillet + 2.5 mm ahead of the trailing edge, checked with
-//                                ray casts at the fillet's feet, and the plain block carries on from
-//                                there. Hub length must be at least Hub width + 1 mm.
-//   build 196                    wing 1.047: Bore corner (default 1 mm) rounds the square bore's four
-//                                corners as an extruded aluminium flat bar's are (user: bar stock is
-//                                not sharp-cornered), plus half the clearance; the bore now takes
-//                                half the diametral Clearance per side (it took the whole of it, so a
-//                                19 mm bar got 0.4 mm of play), boreR published. mold 2.110: the plug
-//                                channel and handle carry the same corner (roundedBoxX; a plain box at
-//                                radius 0).
-//   build 197                    wing 1.048: Joint = Flat mount (bolted through) - the flat-bar layout
-//                                (user): countersunk clearance holes straight down through the root on
-//                                the centreline (Bolts, Bolt, Bolt 1 from the LE, Bolt pitch,
-//                                Countersink), nothing added to the wing; holes outside the chord are
-//                                skipped, laminate under each head is checked; buildWingFlat publishes
-//                                foilWingFlat (socket and hub off). mold 2.111: reads it - the holes
-//                                mold as pins from both halves as the part has them, core clearance to
-//                                the head diameter, notice line.
-//   build 198                    stab 4.021: the mount block moves from the fuselage to the stab (user):
-//                                Block to body (Mount pad group, default on) continues the pad, Pad
-//                                width, from the pad face out to the fuselage centreline less the
-//                                fuselage's round (Fuselage dia, typed in: the stab is built first) -
-//                                cheeks beside a narrower tube, a fill where the pad face is beyond the
-//                                radius, nothing where the tube's flat already spans the pad; publishes
-//                                blockOn, fusDia, mountFarZ. fuselage 4.014: Stab block removed - the
-//                                seat is the flat at the pad face and the tapped holes only (the block
-//                                was the stray second body of the user's log). mold 2.112: the bolt
-//                                fill and cones run to mountFarZ, so a block fill over a bolt is filled
-//                                too (flipped with the pad-under mirror).
-//   build 199                    stab 4.022: Mount side (Top / Bottom) is its own field ahead of Mount
-//                                pad, pad or no pad (user: some stabs are designed without a pad); Pad
-//                                side removed. It sets the seat skin, the countersink face and the
-//                                published padSide whether or not there is a pad (a padless stab was
-//                                seated on its top by the stab and read as on-top-of-the-fuselage by the
-//                                fuselage). fuselage 4.015: with no pad the seat plane is the root skin
-//                                on the mount side (topZ), not the pivot height.
-//   build 200                    wing 1.049: the hub's back is square (a D in plan: semicircle at the
-//                                front only) and the pocket runs from its front wall out through that
-//                                back, open - part of the fuselage interface (user); Pocket length is
-//                                now Tongue length, published only. Hub above apex down to -40 (user:
-//                                "let me push the hub below the wing centre"): the underside follows a
-//                                sunk top down to keep 4 mm under the pocket, and the notice warns
-//                                where the pocket floor would break through the lower skin. Hub length
-//                                need only be half Hub width + 2 mm.
-//   build 201                    mold 2.113: the parting climbs to the stab's pad plane only when the
-//                                pad has its tail fairing (the climb exists for the tail's rounded far
-//                                face); a pad alone is a pocket in its own half, so the other half no
-//                                longer grows a block down to the pad plane (user: "a block in the mold
-//                                on top" with the pad under and no tail). stab 4.023: Pad height may be
-//                                0 - the flat exactly on the section's highest point (user).
-//   build 202                    all six features +0.001: every console line and every notice is also
-//                                kept in a string variable (foilPrint / foilNotice: foilWingLog,
-//                                foilWingNotice, foilStabLog/Notice, foilPerfLog/Notice, foilMastLog/
-//                                Notice, foilFuselageLog/Notice, foilMoldLog_WING/STAB/MAST and
-//                                foilMoldNotice_...), cleared at each feature's start, so the Onshape
-//                                MCP server reads them through the API's featurescript evaluation
-//                                (user: Claude driving Onshape directly). Nothing else changes.
-//   build 203                    wing 1.051: no tooltip or comment names the home-build plan or a
-//                                builder (user: the public documents are about the tool; plans and
-//                                builders are documented outside the package). Text only, via
-//                                tools/strip_names.py.
-//   build 204                    stab 4.025: no pad body where the pad-side skin is already flat at the
-//                                pad plane over the pad's length (a Clark Y flat with Pad height 0) -
-//                                the ramp was filling the leading edge's round with a block on the flat
-//                                (user: "the block at the leading edge is the beginning of the pad");
-//                                Front ramp (default on) - off gives the pad a square front face at
-//                                Flat start instead of the ramp (user: "I can't remove the ramp").
-//   build 205                    mold 2.115: a pad-under stab is mirrored for molding only when its tail
-//                                fairing is on (the pad-plane prism is what needed the pad on top);
-//                                otherwise the mold keeps the stab's orientation - pad pocket in the
-//                                lower half, countersink cones from the upper half (user: "the stab is
-//                                configured the opposite"). The bolt fill reaches the pad on whichever
-//                                face it is.
-//   build 206                    fuselage 4.017: text only - the Bolt depth tooltip and two comments said
-//                                "Pad side", which build 199 renamed Mount side on the stab.
-//   build 207                    mold 2.116: Detail = Print / Preview (Part group). Preview builds the two
-//                                halves with the cavity, parting, plug and cones only - groove, vents,
-//                                keys, stagger and templates off, one tile per half, no printed-core
-//                                segments - and prefixes the notice with PREVIEW; detail= in
-//                                MOLD_INPUTS. First written by a parallel session as its build 206 and
-//                                pushed; that push was overwritten by this session's 206 (fuselage
-//                                text), so it is rebuilt here from its roadmap note.
-//   build 208                    fuselage 5.000: the hub body, built from the user's fuselage template
-//                                (Ultra studio): Body = Follow the wing's joint / Round tube / Hub body;
-//                                nose = the hub's D on its top face with a tongue in the open pocket
-//                                and countersunk clearance holes on the hub's bolts, rounded body to
-//                                section 1 carrying the mast pocket, tail to the stab's seat (length
-//                                from the stab's Arm), seat block on the pad plane tapped through for
-//                                the stab's bolts; Nose height, Body height / width / length, Tail
-//                                depth, End width, Edge round, Nose countersink. wing 1.052: Hub =
-//                                Standard (40 x 92, top 3, pocket 24 x 5 from 20, 3 x M8 at 20 from 15,
-//                                10 deep; only Hub from apex moves it) or Custom; hubEffective();
-//                                publishes boltClear, boltHead, std. stab 4.026: Bolt default M5 (the
-//                                standard stab fixing is two M5).
-//   build 209                    wing 1.053: with the Standard hub the bolt is chosen by size only (Hub
-//                                bolt: M5 / M6 / M8, shown for both hubs); the standard fixes the count
-//                                and positions (three at 20 mm pitch from 15), which is what the fuselage
-//                                was drawn with (user: "bolts by the bolt size; the fuselage sets the
-//                                bolt number and positions").
-//   build 210                    mold 2.117: Source model = Fuselage (user). The fuselage takes the mast's
-//                                flat-parting path (isFlat): laid on its side 400 mm below the origin,
-//                                parted on its symmetry plane into left and right halves, tiled, keyed,
-//                                grooved and bagged like any part. Its outline for the groove is read
-//                                off the laid copy by ray casts; the hub's countersunk bolt holes and
-//                                the stab's tapped holes lie in the parting plane and are filled in
-//                                the cavity copy (fusFill) - drill and countersink after cure; the
-//                                mast pocket molds as two half cores. No caps, stiffness or
-//                                templates; layup = skins + fill. Wing/stab-only code is now gated by
-//                                !isFlat, mast-only by isMast.
-//   build 211                    mold 2.118: the two tile-key parting calls in the tiling code were
-//                                gated by !isMast and reached moldPartingPointsPad with m undefined on
-//                                a fuselage (user's paste, build 210's first fuselage mold); gated by
-//                                !isFlat like the rest. MOLD_INPUTS names the FUSELAGE source.
-//   build 212                    mold 2.119: the fuselage's groove outline is read by three rays each
-//                                side (on the parting plane and 9 mm either side, outermost hit kept) -
-//                                the single ray fell into the mast pocket and drew the outline through
-//                                it, and at Groove depth 2.5 the groove cut a 0.03 cm3 sliver off the
-//                                pocket's half core (a floating 7th body, user's Ultra fuselage mold).
-//                                The notice counts left / right tiles for a flat-parted part.
-//   build 213                    mold 2.120: the fuselage is parted TOP AND BOTTOM, not left and right
-//                                (user: "the mast cutout will not release" - a core inside a pocket can
-//                                only leave through the pocket's opening, so the opening must face its
-//                                half). The parting is a prism along the profile the fuselage
-//                                publishes (partZ: under the nose at the hub's top, a 0.2 mm step
-//                                inside the body's front face, then the sections' mid-heights),
-//                                extruded across the block; its lowered copy floors the groove; the
-//                                outline is read at the parting height; the vertical bolt holes are
-//                                filled in the cavity copy; tile keys sit on the profile. isFlat now
-//                                means only "no wing/stab model". fuselage 5.001: publishes partZ for
-//                                both bodies (the tube's is its axis).
-//   build 214                    fuselage 5.002: the published parting profile dips under the mast pocket
-//                                (0.2 mm inside its ends, 0.3 mm under its floor) - on 213 the parting
-//                                at the body's mid-height (Z 11) passed 1 mm above the pocket floor
-//                                (Z 10) and a 1.2 cm3 slab of the lower half was left trapped in the
-//                                pocket as a seventh body (Ultra). Both bodies (fusPartProfile).
-//   build 215                    mold 2.121: the fuselage's holes get cones and pins, not holes in the
-//                                mold (user): each hole the fuselage publishes is filled 0.3 mm inside
-//                                its faces (head radius where countersunk) - 214's fill pins ran
-//                                through the whole block and cut the mold - and with Bolt cones on a
-//                                countersink + tapered cone (countersunk holes) or a straight pin 0.5
-//                                mm under the tapping drill (tapped holes) is added from the half
-//                                that forms the face the bolt enters, Cone web short of the far face.
-//                                Templates: a skin strip per half from the published stations.
-//                                Stiffness: cantilever from the root under the stab's lift at n g
-//                                (skins + fill EI), skin stress vs woven 300 MPa. fuselage 5.003
-//                                publishes holes, stations, rootX; performance 1.020 halfLift.
-//   build 216                    mold 2.122: an unused variable (rr, the corner radius in the fuselage
-//                                stiffness loop) removed - Onshape flagged it as an INFO notice on 215;
-//                                lint_fs.py missed it because it was assigned twice and read never.
-//   build 217                    mold 2.123: the fuselage check adds torsion and side bending (user: the
-//                                fuselage also twists between the wing, the stab and the mast) - a 60/40
-//                                split of the wing's and the stab's lift at the load factor twists it
-//                                hub-to-mast and stab-to-mast (Bredt's closed-section J for the skins
-//                                plus the fill's rectangle constant, shear vs woven's 80 MPa, twist in
-//                                degrees), and Mast side g at the mast bends it sideways from the hub
-//                                (skin stress vs 300). The mold reads foilMastModel for the fuselage
-//                                too; fusSectionAt() replaces the inline station interpolation.
-//                                performance 1.021: foilWingLoads publishes halfLift and yBar.
-//   build 218                    mold 2.124: the torsion shear is a solid rectangle's (T / alpha w h^2)
-//                                when the fill is tow or monolithic and the skins' alone (Bredt) only
-//                                with a foam or printed core - 217 quoted the skin-only figure for a
-//                                solid fuselage (180 MPa); the note names the open-topped stretch over
-//                                the mast pocket as the weak point the figure does not cover.
-//   build 219                    mold 2.125: a tail core for the fuselage (user) - Core = Foam or Printed
-//                                on a fuselage mold lays up the tail from Core from mast (default 20
-//                                mm) behind the mast to Core end gap ahead of the seat with a core, the
-//                                rest solid woven; UD strips top and bottom over the core, plies per
-//                                station from the stab's lift at n g and Tail UD MPa (fusCorePlan);
-//                                the printed core as segments with a dowel per joint, the foam core as
-//                                a reference body, and Mold of = Its foam core molds it (open ends,
-//                                parted on its mid-height). Layup, cut list, UD templates, stiffness
-//                                (caps + skins + core over the core zone) and torsion (skins-only
-//                                there) follow. fuselage 5.004 publishes seatX0.
-//   build 220                    mold 2.126: the fuselage core mold's notice no longer carries the
-//                                fuselage's parting and bolt-cone lines (they describe the part mold).
-//   build 221                    mold 2.127: the fuselage's bending check reports the largest skin
-//                                stress along its length and where, not only the value at the root (the
-//                                layup report found 73 MPa mid-body against 51 at the hub for solid
-//                                woven); the OVER warning uses the largest.
-//   build 222                    mold 2.128: a solid fuselage's layup line says "no UD caps" instead of
-//                                "0 plies per cap at the mast end".
-//   build 226                    mold 2.129, from the Ultra layup report: a printed core takes Core GPa
-//                                in the wing/stab/mast stiffness check (it had tow's modulus); a foam
-//                                or printed core's shear between the caps is checked (V Q / EI) against
-//                                Core shear MPa, or an estimate from Core kg/m^3; a stab's tail no longer
-//                                deepens the section in the check and the cap schedule (the part keeps
-//                                its depth when the tail stretches the chord); the wing/stab check
-//                                reports its largest cap stress and where, not only the root's; the
-//                                hub holes' islands the parting leaves loose are deleted (two slugs),
-//                                and the plate tray and pod plug no longer trip the tile-count warnings.
-//   build 227                    wing 1.054: the Flat mount gets a Mount pad (user: "when the front wing
-//                                fuselage joint is directly bolted it needs a pad to set the incidence")
-//                                - a bar seats the wing on its underside's own line, not at the angle
-//                                it was drawn (a Clark Y's flat is 2.1 deg from its chord; a cambered
-//                                NACA underside rocks on its curve), so a pad under the root, flat and
-//                                horizontal Pad height below the underside's lowest point, Pad width
-//                                wide, from Flat start (ramp from the nose, or a square front) to the
-//                                TE, is the shim that sets it: buildWingFlatPad, the stab pad's
-//                                construction mirrored; no body where the underside already lies on
-//                                the pad plane. The bolts pass through it and the laminate under each
-//                                head counts it. The notice reports the seat line (the lower convex
-//                                hull of the underside, the edge under the bolts' resultant:
-//                                seatLineAngle) and the angle the wing would run at without the pad;
-//                                with the pad off that is a warning. foilWingFlat publishes padOn,
-//                                padBody, padW, padZ, padX0, padFlatX, seatDeg, asBuiltDeg. mold
-//                                2.130: the core keeps clear of the pad's width; notice line.
-//   build 228                    stab 4.027: Block to body defaults OFF (user: "when I change the height
-//                                don't adjust the pad" - with Height -25 and Pad height 1 the block
-//                                filled 25 mm down to a 24 mm tube's centreline, which read as the pad
-//                                resizing). The block's height is minus Height by definition (it
-//                                bridges the pad face to a round tube's centreline), so it cannot stay
-//                                put while Height moves; off, the pad is exactly Pad height whatever
-//                                Height is. Tooltip says so. Existing features keep their stored value.
-//   build 229                    performance 1.022: the Propulsion drive corrected as in the B-Series
-//                                Propeller Blade Generator's build 44 - Torque const (default 9.55 Nm.kV/A,
-//                                the datasheet's mNm/A x kV; 8.27 was hard-coded and read 13 % low against
-//                                the e-Foil Holland static thrusts), Cell V (default 3.7; 4.1 for a fresh
-//                                pack under load), and Prop hub (mm; 0 = the polynomials' own 0.167 D)
-//                                taking its share off KT (1 - (h^3 - 0.167^3)) and KQ (1 - (h^4 - 0.167^4)).
-//                                With 9.55 and the hub the static thrust reads within 7 % of the 12
-//                                measured props. Existing features keep 8.27-equivalent results only if
-//                                Torque const is typed as 8.27; new ones get 9.55.
-//   build 230                    wing 1.055, stab 4.028: a roll number in each notice (user: "add the roll
-//                                number to the tool"). The lifting line is flat, so the drop, gull and
-//                                winglets change none of its numbers; checked in a vortex lattice they move
-//                                lift and induced drag under 1 %, and what they do change is roll. rollResponse
-//                                runs a horseshoe vortex lattice (12 panels a side, cosine spaced) on the
-//                                surface's own span line (wingletFrame) and quarter-chord line (sweep,
-//                                align) at 4 deg, sideslip +-2 deg: Cl_beta per radian (+ = rolls into the
-//                                sideslip, as anhedral does), and the straight anhedral from the root that
-//                                gives the same Cl_beta on the same planform (flat and 6 deg references,
-//                                linear). A 900 mm wing's 35 mm S-curve reads 5.4 deg. foilWingRoll / foilStabRoll
-//                                publish { clb, deg }; WING_ROLL / STAB_ROLL log lines.
-//   build 231                    mold 2.131: Core made = Molded / Milled on Mold of = Its foam core (user: "an
-//                                option to mill or mold it"). Milled builds no mold: the core body is split to
-//                                the bed as the printed core is (one helper, moldCoreSectionAt, now serves the
-//                                dowels, the tabs and the sheet check), with as many cuts as it takes for each
-//                                section to fit inside Sheet thick with its droop and twist, then (Hold tabs on,
-//                                the default; off leaves the CAM to hold the part) four tabs
-//                                (Hold tab wide x Hold tab thick, Hold tab len out of the leading and trailing
-//                                edges, Hold tab in into the foam, Tabs per edge (default 2) spread along the section at its
-//                                mid-height - on the edges, not the span ends, so the glue joints stay clean
-//                                and the edges are sanded back after; user; in a winglet the section's
-//                                station comes from the frame's y and its tilt, through moldCorePoint, so
-//                                the tips get tabs too; user) are joined to each section as
-//                                one body "... foam core k of n (milled)" - the stock is not modelled (user:
-//                                "just add tabs to the model, don't try to model the stock"; a first cut had
-//                                framed each section in its sheet with flip-pin holes). The notice reports the
-//                                sheet needed, the largest section with its tabs, the tabs and the dowels,
-//                                then the layup; warnings for a thin sheet or a section over the bed.
-//   build 232                    performance 1.023: the leading-edge tubercles get their own line (user: "add
-//                                the bump credits to Foil performance but ... always called out separately,
-//                                not as an overall impact hidden in the calculations"). Tubercles (Section
-//                                and drag model, default on) does nothing to the sweep, the CSV or the
-//                                figures; with tubercles on the wing it appends "LE tubercles, reported
-//                                apart" to the notice and a block to the report: the charge the lifting
-//                                line can compute (the troughs' local cl up by the chord's share of half
-//                                the height - the twin at 120 modes gave 2.5 % for a 2.6 % chord ripple -
-//                                so take-off loading and stall speed trough-first, tubercleStallAlpha /
-//                                speedAtAlpha / kmh), then the published credits on the same two numbers
-//                                (CL max -5 to +6 %: Johari 2007 and Hansen 2011 2D at Re 0.1-0.2M to
-//                                Miklosovic 2004's flipper at 0.5M; the flipper's +4 deg stall angle as a
-//                                bound; lift kept past stall as text, no post-stall branch here), the
-//                                drag of unknown sign within 8 % of the wing's profile drag as a glide
-//                                range, and whether height/c and pitch/c lie in the tested range.
-//                                foilTubercleCredits publishes it; tubercleCredits in PERFORMANCE_INPUTS.
-//                                wing 1.056, stab 4.029: "bumps" renamed "tubercles" in every label,
-//                                tooltip and notice (user); ids (bumpOn, bumpAmp ...) and log keys unchanged so stored
-//                                values and old logs survive. Labels: LE tubercles, Tubercle amp,
-//                                Tubercle pitch, Tubercles from, Tubercles to.
-//   build 233                    From a code read of the three joints for a home builder's metal
-//                                bar. wing 1.057: Mouth wall % (Round and Square socket, 25-100,
-//                                default 50 = every earlier build's rear face): the share of Wall the
-//                                socket's mouth keeps, 100 = no taper, for a metal bar whose moment is
-//                                largest there (user); the socket's note gives the rear face, the mouth
-//                                wall and where the bore starts, and says when the bore lies wholly
-//                                behind the root TE (a notice, not a warning: Rear extension 90 > Socket
-//                                depth 80 does it on any root, the round socket's pod as drawn), with the
-//                                Socket depth / Rear extension (or Blend length) that puts 10 mm of it
-//                                under the wing; Tube dia shown for the Round socket only; the Square
-//                                socket's bolt checked against half the Bore width, the side it passes
-//                                through (half the larger side before); publishes teX, rearExt,
-//                                rearFair, mouthWall. Tooltips: Hub length runs from the hub's front
-//                                (apex + Hub from apex), not the apex; Hub above apex gives +3 for the
-//                                Standard hub's template instead of "never higher than the section"
-//                                (stale since build 187), and the Standard hub says to set it; Fuselage
-//                                joint, Clearance, Wall, Rear fairing, Socket depth, Bolt and Bolt dia
-//                                cover the Square socket. stab 4.030: the seat note names its Height
-//                                reference either way (socket axis, round or square, with the pivot Z
-//                                that is the no-socket Height; or the wing pivot), Height tooltip to
-//                                match. mast 2.011: WARNS when the mast's LE is ahead of the wing
-//                                socket's rear face (the foot on the nacelle), with Mast X or the wing's
-//                                Rear extension that clears it - Foil fuselage warned already, a home-
-//                                built bar had nothing. fuselage 5.005: refuses a Square-socket wing (it
-//                                built a round spigot from the hidden Tube dia). mold 2.132: the core
-//                                mold (Mold of = Its foam core) keeps the core clear of a Flat mount as
-//                                the part mold's layup does (flatOn is off in a core mold, so the core
-//                                ran through the root); Clear socket relabelled Clear joint (id
-//                                unchanged) and with Core clear says it covers the sockets, the hub and
-//                                the flat mount; Bolt cones tooltip covers all it does (stab bolts, the
-//                                hub's holes, the socket's shanks with the plug, the fuselage's holes;
-//                                never the flat mount); Socket plug covers the Square channel; group
-//                                "Tube socket" renamed "Socket".
-//   build 234                    stab 4.031: the mount pad joins the stab wherever Flat start is (user: with a
-//                                Root tail, Front ramp off and Flat start -13 the pad's front floated over the
-//                                skin). buildFoil returned rootPts without the root's own offset: a root tail
-//                                sets the root pivotFrac x tail aft (all of the tail behind the TE), so the
-//                                pad, the bolt checks and foilStabRoot (leX, teX, padX0, contour; read by Foil
-//                                fuselage and Foil mold) saw the root 5 mm forward for a 20 mm tail at the
-//                                quarter chord - LE -18 against the part's -13, the front 0.7 mm above the skin;
-//                                rootPts is now the section as built (the wing's root offset is always 0). The
-//                                underside and the ramp follow the lowest pad-side skin across the pad (the root
-//                                and eight sections to half the Pad width, moldCoreSectionAt), lifted within 40 %
-//                                of the thinnest, sampled crowded toward the front; the root lookups are
-//                                clamped (a thick TE turned by the incidence could throw). Flat start may sit 2
-//                                mm behind the LE with Front ramp off (6 with it on); the warning gives the LE
-//                                and the held value. With no Tail fairing the pad's aft end follows a root
-//                                tail's trailing edge where it curves forward across the pad (user), instead of
-//                                its corners hanging behind it. The countersink check counts the pad and a
-//                                block's fill on the bolt line, as the wing's flat mount does (user). Python
-//                                twin: reference_checks.stab_pad_gap.
-//   build 235 (a)                wing 1.058: two additions to Joint = Flat hub with pocket. Bolts from (Custom
-//                                hub; the Standard keeps its bolts from the fuselage): Fuselage, as before, or
-//                                Wing underside - a clearance hole for the Hub bolt (M5 5.4, M6 6.4, M8 8.4) on
-//                                the centreline at each bolt position from the lower skin to the pocket floor,
-//                                with a 90 deg countersink in the lower skin to the head diameter so the heads
-//                                sit flush, for a metal bar or a fuselage tongue that is tapped instead (a bar
-//                                cannot take bolts down through it into blind holes in carbon as well). Each
-//                                hole starts where a ray cast up its axis meets the wing; the notice gives the
-//                                laminate between each countersink and the pocket floor and warns under 2 mm,
-//                                the flat mount's threshold, and says to keep Foil mold's Core clear so the
-//                                bolts pass through solid laminate. Nose fairing (Fairing length 10-150, default
-//                                50; Fairing height 0-40, default 19): a hump ahead of the pocket, its top a half
-//                                cosine from 0.3 mm inside the skin (or the hub's top) to Fairing height above the
-//                                hub's top at the pocket's front wall, its back face that wall's plane, so a bar
-//                                standing proud of the hub has a ramp before its square nose, as production
-//                                foils fair theirs; side profile x plan (the hub's width less 0.3 mm a side,
-//                                rounded nose), built after the pocket and unioned; the notice gives its height
-//                                above the root's apex and warns when it would run ahead of the leading edge.
-//                                foilWingHub adds boltSide, underZ, cskDepth, tapDia, boltDia, noseOn, noseX0,
-//                                noseX1, noseTopZ; boltDims a nominal dia. mold 2.133: Tile joint = Dowels (as
-//                                before) or Puzzle inlay, for molds milled on a 3-axis router, which cannot drill
-//                                a long tile's end face: a bow-tie pocket (Inlay length / width / waist / depth,
-//                                Cutter dia for its corners, Glue gap) cut from the top into the parting-face
-//                                flange on each side of the cavity, straddling every seam of each half (LE and TE
-//                                for spanwise seams, both ends for chordwise ones), beyond the land and groove
-//                                with 2 mm to spare, moved along the flange clear of the half keys, plug and pod
-//                                channels, vents and other seams, or skipped with the Flange width it needs; each tile's
-//                                pocket is milled in its cavity's setup, so the glued key pulls the parting faces
-//                                flush. Its floor follows the flange (user's main wing: on a drooped wing a flat floor
-//                                left a 30 mm key 3-4 mm proud of the face the other half closes on): a plane fitted
-//                                to 7 ray casts over the key, the floor Inlay depth into the half along its normal,
-//                                the walls vertical (a prism of the plan outline intersected with a slab on the
-//                                floor plane); the key is a flat square-edged plate on that floor, its face Key
-//                                flush from the plane all along it, so the pocket is t tan(tilt) longer at each end
-//                                and its flanks a little wider (inlay_tilt_allowance), the wedges glue-filled; the
-//                                notice gives the largest tilt and end allowance, warns over 12 deg and where the
-//                                flange curves off its plane by more than Key flush. The keys are built as parts
-//                                (Tile key <half> seam <n> LE/TE), Key flush thinner than the pocket, every one the
-//                                same profile, their corners rounded as the cutter leaves them (the
-//                                pockets' waist corners rounded to clear that by the Glue gap, so no pocket edge
-//                                lies on the seam the tiles are split along). No tile dowels or printed tile keys
-//                                with it; the half keys are unchanged. A milled core (Core made = Milled) gets the
-//                                same pockets on its top and bottom faces across each joint, just outside the cap
-//                                band, min(Inlay depth, 25 % of the core) deep, none under 6 mm, its keys Sand
-//                                allow proud, and no dowels. Skipped in Preview. The hub bolted from the
-//                                underside: with Bolt cones its holes are filled in the cavity copy and the lower
-//                                half forms each countersink and a tapered cone to Cone web under the pocket floor
-//                                (the stab's method); the chordwise tile cut keeps ahead of the nose fairing. The
-//                                fuselage's blind holes are filled past their blind end (a closed void there would
-//                                mold a loose island).
-//                                Slivers: a knife-edge tip (Tip cap Tapered, Min tip off, End ratio 0.05: 0.63 mm)
-//                                left two zero-volume bodies at the wing tips that the tile count took for loose
-//                                keys ("2 key bodies did not attach", user's studio); bodies on neither block face
-//                                under 0.05 cm3 that are not a plug or the tray are now deleted before the counts
-//                                and reported on their own line, with the fix in the Foil wing / stabiliser.
-//                                fuselage 5.006: with the wing's bolts from its underside the hub body's nose
-//                                gets blind tapped holes up from the tongue's underside, 1.5 x the bolt's
-//                                diameter deep or 1 mm short of the nose's top, instead of countersunk holes from
-//                                its top; it warns when the wing has a nose fairing where its nose sits; its hole
-//                                list carries which end is blind. Python twin: reference_checks inlay_* and
-//                                hub_underside_laminate.
-//                                Loft stations through the drop: wing 1.058 and stab 4.032 (user's studio, build
-//                                232: 1100 cm2 AR 9, superellipse n 3, Stations 9, a 50 mm S-curve from 0 to 100
-//                                %: from y 18 out the mold's parting sat above the top skin over the last 2-6 mm
-//                                of chord, up to 0.9 mm, so the lower half lapped over the trailing edge, an
-//                                undercut). The superellipse stations put the first one after the root near eta
-//                                0.34, so the loft bridged 13 mm of S-curve in one span and drooped almost
-//                                linearly: its TE 0.8-1.6 mm below the law at y 15-80, while the parting follows
-//                                the law. foilStationEtas now adds, with Tip drop or Gull dihedral, 13 stations
-//                                evenly through [Drop from, Drop to] and two inside each end of the drop (and two
-//                                outside Drop to when it is under 100 %), each where no station sits within 1.5
-//                                mm; the twin's spline through them follows the law within 0.01 mm. Every drooped
-//                                wing and stab changes shape slightly, toward its own law (up to 1.5 mm near the
-//                                root on that wing), molds made from earlier builds included; flat ones do not
-//                                change. mold 2.133: the parting is ruled between its own stations, which sag
-//                                below a curving law (0.6 mm at y 33 on that wing with the default 15, outside
-//                                its 0.8 mm TE once the loft follows the law): moldDropStations halves any
-//                                parting segment whose chord strays more than 0.15 mm from the law, never into
-//                                pieces under 3 mm, inboard of a winglet (4 stations more on that wing, 0.14 mm
-//                                left). A self-check after the tiles: at 8 spanwise points and beside every seam
-//                                a horizontal ray finds the part's TE and LE and vertical rays 0.5-2 mm inside
-//                                compare the halves' first faces with the part's skins; a half more than 0.05
-//                                mm round an edge is a warning, a PARTING_CHECK console line either way. The
-//                                build 232 entry no longer names a private file.
-//   build 235 (b)                wing 1.058, stab 4.032, performance 1.024, mold 2.133: text only. Tooltips and
-//                                comments no longer name production foils or their measured numbers (user:
-//                                "cleanup the guide to remove the third party designs we have scanned"; the
-//                                guide's parameter reference is generated from these tooltips). No geometry
-//                                or maths changed.
-//   build 236                    wing 1.059, stab 4.033: the three tabulated Profiles and Tip profiles of the
-//                                sections build 227 (2026-09-27, the other build of that number) restored -
-//                                Drela MRC-16, Hepperle MH 18 and Speer H105, from a builder's on-water reports.
-//                                Two sessions each wrote a build 227 that day; build 228 grew from the Mount
-//                                pad one, so every later build lacked the sections while the guide kept
-//                                describing them (user: "where did the foil section go"). Merged three ways
-//                                (base 226, this line 235, the sections 227); no other change.
-//   build 237                    wing 1.060, stab 4.034, mold 2.134: the two builds 235 joined. 235 (a), 2026-10-03,
-//                                was pushed to Onshape but its file was overwritten here by 235 (b), 2026-10-04,
-//                                both grown from 234; 236 carried only (b), and on a Part Studio pushed from it
-//                                the mold's cavity showed pits where (a)'s parting and drop-station fixes were
-//                                missing (user, with a picture: "this problem is there which isn't [on] the main
-//                                account"). Merged three ways (base 234, 236, and (a) read back from Onshape);
-//                                no other change.
-//   build 238                    wing 1.061: the Flat mount's pad face clears the skin by at least 0.3 mm (user:
-//                                "MRC-16 molds fail" - the LOWER cavity cut, BOOLEAN_NON_MANIFOLD_RESULT). With
-//                                Pad height 0 the face lay on the underside's lowest point; MRC-16's is 36 mm
-//                                behind the LE, inside the pad, so the pad's side faces pinched to nothing there
-//                                and the wing was non-manifold. A section whose flat already lies on the pad
-//                                plane (Clark Y at 2.1 deg) still gets no pad body; the notice says when raised.
-//   build 239                    wing 1.062, stab 4.035, mold 2.135: with Min tip on, the tip cap ends at least
-//                                0.5 mm thick (user: the default wing "should have been an out-of-the-box
-//                                setting ... make it more resilient"). The default wing with MRC-16 failed the
-//                                mold's LOWER cavity cut whatever the pad or Split stations (36 too); Cap end 40
-//                                % (0.4 mm) and 60 % molded, NACA 3 %/40 molded at 0.25 mm. The floor raises the
-//                                thickness law's end fraction only (published as capEndT, which the mold's own
-//                                thickness law and tip advice read); the plan rounding keeps Cap end %. The
-//                                notice says when it is raised.
-//   build 240                    performance 1.025: the joints' drag counted from the parts' own geometry under
-//                                Joint finish (user, 2026-10-08: "fluid resistance is important ... we use fillets
-//                                on hard faces rather than lofted transitions"; scored first in the twin,
-//                                designs/jason/junction-drag.md). Junction interference after Hoerner ch. 8
-//                                (dCD on t^2 = 0.75 t/c - 0.0003/(t/c)^2) at the wing roots, stab roots and the
-//                                mast's foot, and pressure drag on the faces square to the flow (the socket's
-//                                mouth, the flat hub's front and back; the socket's nose grows out of the wing
-//                                over Blend length, so it counts as lofted whatever the finish) by finish: bare,
-//                                filleted (default, the tool's practice) or lofted. Other cm^2 is now for bolts,
-//                                fittings and cables only.
-//   build 241                    wing 1.063: Root fairing on the round and square sockets (user: lofted transitions, not
-//                                fillets on hard faces; then "not really smooth joins"): the nacelle is one loft
-//                                whose sections carry the fairing - the ellipse with a short side flat (where it
-//                                is vertical, so it stays smooth) and, where the fairing is active, a concave
-//                                fillet each side tangent to it and to a line 0.4 mm inside the skin, following the
-//                                span line's droop at its foot, closed through the wing's inside. No second body,
-//                                no margin, no seam. Radius grows to Fairing radius (2-100 mm while tested) by mid-
-//                                root, held under 90 % of the nacelle's height out of the skin; with the socket
-//                                running on behind the TE it holds to the TE and the TE carries on for Fairing tail
-//                                (0-100 mm) as a web inside the TE's thickness, following its droop, leaving the TE
-//                                on a plan radius and easing back to the nacelle's mid-height; else it eases to
-//                                nothing ahead of the TE. With Socket height the blend starts on the root's mid-
-//                                thickness and eases to the axis (user: the front must stay inside the chord's
-//                                height). Guarded: a failure builds the plain nacelle and says why in the notice.
-//                                The tail's web follows one law, fairWebZ (the TE's height along the camber
-//                                slope, easing to the socket's axis by the tail's end), published as the socket
-//                                map's web; mold 2.136 parts on the same law behind the TE at every station the
-//                                web reaches (user, with section views: the parting ran above the web), with
-//                                parting stations across the web, and through the nacelle's diameter after it.
-//                                The square socket's rounded rectangle enters as fairPt, a ray from the centre
-//                                meeting it (the ellipse's formula everywhere else); twin in designs/jason/tuning/fairing.
-//                                performance 1.026: a faired root's two junctions count as lofted whatever Joint
-//                                finish says; each junction carries its own finish.
-//                                wing 1.064: Root fairing on the flat hub too (user: "work on the hub"), in place of
-//                                Hub fillet: one body lofted along the hub's D in plan, each section normal to it,
-//                                a concave arc tangent to the wall and to a line 0.4 mm inside the skin, held under
-//                                90 % of the wall's height; behind the TE a web, the TE's upper half on its own
-//                                height (its bottom on the mold's parting), with a plan radius sheet each side.
-//                                Twin hub_twin.py. performance 1.027: a faired hub's root junctions count as lofted.
-//                                mold 2.137: the seam keep-out and the parting check's keep-out take the fairing's
-//                                reach (published as hub.reach), not only the hub's width.
-//                                wing 1.065: the hub fairing lofts only where the hub stands 0.6 mm out of the skin,
-//                                one loft per stretch (a sunk hub's sections turned inside out); Fairing spread
-//                                (0.5-4, user: "how flat/wide the fairing is"): the fillet is a circle in the
-//                                section squeezed across by it, so a quarter ellipse spread x wide to 1 tall,
-//                                tangent at both ends, socket and hub alike.
-//                                wing 1.066 / mold 2.138: the faired tail's plan edge (each station's foot behind
-//                                the TE, the plan radius) is published (socket web.edge, hub.plan, which also
-//                                carries the hub's own block past the TE), and the mold's outline - the pinch-off
-//                                groove and the cavity's - follows it, with parting stations across the hub (user,
-//                                with a picture: the groove did not follow the fairing). The spanwise seam and the
-//                                parting check keep clear of a faired socket's whole reach, not only the nacelle.
-//                                mold 2.139: loose bodies under 1 mm3 (specks the cavity cuts free, at the tips and
-//                                where a faired tail leaves the TE) are deleted before the plugs gather the loose
-//                                cores and before the body count (user: four "socket plug" bodies at the TE).
-//                                wing 1.067: Pocket floor on the flat hub (user: "a v contour with filleted edges ...
-//                                to help with rigidity"): Flat, V groove or V ridge, V depth and V fillet; the
-//                                floor falls (rises) from the walls to the centreline, shoulders and apex rounded;
-//                                the bolt holes start from the centreline floor, published as floorZ (the walls'
-//                                as floorWallZ), so the mold's cones follow. fuselage 5.007: the hub body's tongue
-//                                takes the matching V, offset by the clearance along each face (twin hub_v_twin.py).
-//                                wing 1.068: Bolts from = Fuselage, nut inserts (Custom hub; user: through holes with
-//                                flanged inserts below, a hand fit, solid laminate between the skins carrying the
-//                                clamp; the concern twist and yaw): through holes, the insert's bore and the flange's
-//                                flush recess from the underside at Insert fit; warns when the insert reaches within
-//                                1 mm of the pocket floor; the notice estimates the clamp at full preload and the
-//                                twist and yaw it holds. mold 2.140: fills the holes and forms the bore and recess as
-//                                bosses on the lower half.
-//                                mold 2.141: a wing with winglets failed "No matching function for size(undefined)":
-//                                the winglet parting stations carry no aftPts (user's Ultra wing mold).
-//                                performance 1.028: the mast's drag summed over 12 strips of the wetted span at each
-//                                strip's own chord and thickness, spray at the waterline's thickness (it took one
-//                                section at half the submerged depth, so a mast thickened below the waterline read
-//                                too little drag; user's 110 kg mast, 0.4 N at 17 km/h).
-//                                mold 2.142: the mast mold's third piece forms only the plate's board face (user: "the
-//                                top plate should only be for the top of the plate. all features should be on the mold
-//                                sides so it releases"): the halves run through the plate to its board face, the
-//                                plate's holes and countersinks are filled in their cavity tool, and the lid's straight
-//                                pins form the holes to 0.3 mm short of the underside; features open to the board
-//                                face (recesses, direct edits; not through to the underside) are left void in the
-//                                halves and molded by the lid (user: "and any features on the top of the plate only").
-//                                Then (user): the halves form every through feature, the bolt holes' pins and
-//                                countersink cones as modelled, the lid only features open to the board face and not
-//                                through (the air in the plate's footprint, less the part, holes and through
-//                                columns); a release check slides the lid off the board face and the plate-end tiles
-//                                down the mast (the user's demold: they slip down from the lid) and apart (MAST_RELEASE).
-//                                mold 2.143: the top-face split worked on an upright copy of the plate (box less the
-//                                actual plate, as checked by evaluation), turned flat; MAST_RELEASE gives where a lock is.
-//                                wing 1.069, stab 4.036: a tabulated profile's built-in polar follows the section's
-//                                thickness (builtinPolar, tableThicknessPolar; NeuralFoil fits): until now a thinner
-//                                MRC-16 tip read the native 13.9 % section's drag and CL max (user's Ultra, tip 9 %).
-//                                wing 1.070: Nose fairing rebuilt as one lofted body (buildNoseFairing; twin nose_twin.py):
-//                                a ridge from a nose point to a flat back face on the pocket's front wall, Top shape,
-//                                Nose fullness and Crown round, the foot line the plan and the wall section the root
-//                                fairing's (which runs the sides only, from the wall), so the sides fair into it (user:
-//                                "the sides should fair into the side fairing too"; the 235 hump "needs a lot of work").
-//                                fuselage 5.008: with it on, the hub body drops its nose and starts with a flat face on the
-//                                wall, the fairing's back face, growing to Body height and Edge round by the hub's back.
-//                                mold 2.144: the fairing's volume in the root's solid fill. performance 1.030: the back
-//                                face's strips beside a narrower bar counted.
-//   build 242                    mold 2.145: Pry sections (user: Easy Composites chamfer the parting line so a wedge can
-//                                pry the mold open; "areas not corners ... not the entire length but sections", "no
-//                                larger than 100 mm", "only large enough to take a wedge"). On every outer face, 45 deg
-//                                V pockets across the parting (Pry length 30, Pry depth 3 per half, Pry spacing 150),
-//                                one per stretch between tile seams so each tile gets one and none straddles a joint,
-//                                none in the plug / pad channel band or near a corner; parting height by a ray into the
-//                                upper half. PRY console line, notice line. Ejector holes are the next build.
-//   build 243                    mold 2.146: Ejectors = Off / Dowel holes (wax-filled) / Printed flush plugs, Ejector dia
-//                                6, Plug fit 0.15 (user: pins "to hammer complex deep part out of a mold", both
-//                                choices in the dialog). Spots from rays: along candidate lines the part's thickness
-//                                between the halves' cavity faces, the thickest spot whose rim is smooth on both faces
-//                                (no pin, pocket or cone edge); wing / stab either side of the joint nearest the centre,
-//                                mast near each end, fuselage one per third. A hole through both halves at each; a
-//                                plug's shank is cut from a copy of its tile so its face is the cavity's. EJECT line.
-//   build 244                    mold 2.147: Land gap under Pinch-off (user: "set the height of the land to allow glass
-//                                or a skin to be laid on top of it"). 0 (default) pinches on the land as before; above 0
-//                                a ring from the cavity's outline out to Land width is cut from the lower half, its floor
-//                                the groove's lowered curtain moved up by Groove depth less Land gap, so plies carried
-//                                out over the land are squeezed to that thickness and the halves bear outside the groove.
-//                                At least 0.2 mm under Groove depth. Round a mast's pod the land stays, as the groove does.
-//                                Also: printed ejector plugs no longer read as extra tiles or floating keys in the notice.
-//   build 245                    mold 2.148: a printed ejector plug's head moves to the cavity side (user: "ejector pins
-//                                have to be pushed into the mold, you have a head that would prevent this"; "the head
-//                                could be on the inside"). Head 4 mm wider than the shank, 2.5 mm deep, in a counterbore
-//                                in the cavity face, its face cut from the cavity; the laminate's pressure seats it on the
-//                                shoulder, a punch from outside pushes plug and part inward. Shank flush at the outer face.
+// The build history is kept with the source, not in the published copy.
+
 export const FOIL_FILE_BUILD = "245";
 export const FOIL_WING_VERSION = "1.070";
 export const FOIL_STAB_VERSION = "4.036";
@@ -2383,7 +681,7 @@ export const foilWing = defineFeature(function(context is Context, id is Id, def
             if (definition.socketOn && definition.wingJoint == WingJoint.HUB)
             {
                 annotation { "Name" : "Hub", "Default" : "STANDARD",
-                             "Description" : "Standard hub: fixed dimensions so one fuselage fits every wing built with it - 40 wide x 92 long, 3 mm join fillet, pocket 24 wide x 5 deep from 20 mm behind the front, open at the square back, three blind holes of the Hub bolt size at 20 mm pitch from 15 mm behind the pocket's front wall, 10 mm deep (build 208, user): the fuselage's bolt count and positions, fixed by the standard, its bolts always down through the fuselage. Only its position changes: Hub from apex and Hub above apex (its fuselage template was drawn with the hub's top 3 mm above the apex: set Hub above apex to 3 to match it). Custom: every dimension below is yours, Bolts from included. More standards will join the list as production pockets are measured." }
+                             "Description" : "Standard hub: fixed dimensions so one fuselage fits every wing built with it - 40 wide x 92 long, 3 mm join fillet, pocket 24 wide x 5 deep from 20 mm behind the front, open at the square back, three blind holes of the Hub bolt size at 20 mm pitch from 15 mm behind the pocket's front wall, 10 mm deep (build 208): the fuselage's bolt count and positions, fixed by the standard, its bolts always down through the fuselage. Only its position changes: Hub from apex and Hub above apex (its fuselage template was drawn with the hub's top 3 mm above the apex: set Hub above apex to 3 to match it). Custom: every dimension below is yours, Bolts from included. More standards will join the list as production pockets are measured." }
                 definition.hubStd is HubStandard;
 
                 annotation { "Name" : "Hub from apex",
@@ -2395,7 +693,7 @@ export const foilWing = defineFeature(function(context is Context, id is Id, def
                 isLength(definition.hubHeight, { (millimeter) : [-40, 0, 20] } as LengthBoundSpec);
 
                 annotation { "Name" : "Hub bolt", "Default" : "M8",
-                             "Description" : "The bolts that hold the fuselage or bar to the hub: M5, M6 or M8 (M4 and M10 allowed; Custom takes Hole dia). With the Standard hub this is the one bolt choice you make - the standard fixes three of them at 20 mm pitch, 15 mm behind the pocket's front wall, 10 mm deep, the pattern the fuselage template was drawn with (build 209, user). Bolts from the fuselage: sets the hub's tapping drill (M8 6.8, M6 5.0, M5 4.2 mm) and the fuselage's clearance holes and countersinks. Bolts from the wing's underside (Custom hub): sets the wing's clearance holes (M5 5.4, M6 6.4, M8 8.4 mm) and their countersinks, and the fuselage's tapping drill." }
+                             "Description" : "The bolts that hold the fuselage or bar to the hub: M5, M6 or M8 (M4 and M10 allowed; Custom takes Hole dia). With the Standard hub this is the one bolt choice you make - the standard fixes three of them at 20 mm pitch, 15 mm behind the pocket's front wall, 10 mm deep, the pattern the fuselage template was drawn with (build 209). Bolts from the fuselage: sets the hub's tapping drill (M8 6.8, M6 5.0, M5 4.2 mm) and the fuselage's clearance holes and countersinks. Bolts from the wing's underside (Custom hub): sets the wing's clearance holes (M5 5.4, M6 6.4, M8 8.4 mm) and their countersinks, and the fuselage's tapping drill." }
                 definition.hubBolt is BoltSize;
 
                 if (definition.hubStd == HubStandard.CUSTOM)
@@ -2462,7 +760,7 @@ export const foilWing = defineFeature(function(context is Context, id is Id, def
                     if (definition.hubBoltSide == HubBoltSide.NUTS)
                     {
                         annotation { "Name" : "Insert dia",
-                                     "Description" : "Bolts from = Fuselage, nut inserts (build 241, user): the bolts come down through the fuselage and right through the wing into flanged nut inserts pushed into the wing's underside, a hand fit. This is the insert's barrel diameter; the bore is this plus Insert fit. Limits 4-20 mm. Typical M5 7, M6 9, M8 11 mm: measure yours. With a nut the bolt can be torqued to full preload, which tapped carbon cannot hold, and the clamp is what carries twist and yaw at the joint." }
+                                     "Description" : "Bolts from = Fuselage, nut inserts (build 241): the bolts come down through the fuselage and right through the wing into flanged nut inserts pushed into the wing's underside, a hand fit. This is the insert's barrel diameter; the bore is this plus Insert fit. Limits 4-20 mm. Typical M5 7, M6 9, M8 11 mm: measure yours. With a nut the bolt can be torqued to full preload, which tapped carbon cannot hold, and the clamp is what carries twist and yaw at the joint." }
                         isLength(definition.hubNutDia, { (millimeter) : [4, 11, 20] } as LengthBoundSpec);
 
                         annotation { "Name" : "Insert length",
@@ -2484,7 +782,7 @@ export const foilWing = defineFeature(function(context is Context, id is Id, def
                 }
 
                 annotation { "Name" : "Pocket floor", "Default" : "FLAT",
-                             "Description" : "The shape of the pocket's floor and of the fuselage tongue on it (build 241, user: a V contour for rigidity). Flat: every earlier build. V groove: the floor falls from the walls to a V on the centreline and the tongue's underside is the same V, so side loads and roll are carried by the V's faces, wedged by the bolts' preload, and it self-centres. The centreline (the bolts) stays at Pocket depth; the floor at the walls rises by V depth, so the laminate under the bolts is unchanged, and the notice warns when the walls are left under 1.5 mm tall. V ridge: the floor rises to a ridge, the tongue grooved to match; the same location, more laminate under the bolts. Both mold from the upper half without undercut. The hub body's tongue follows it at the same Clearance all round." }
+                             "Description" : "The shape of the pocket's floor and of the fuselage tongue on it (build 241). Flat: every earlier build. V groove: the floor falls from the walls to a V on the centreline and the tongue's underside is the same V, so side loads and roll are carried by the V's faces, wedged by the bolts' preload, and it self-centres. The centreline (the bolts) stays at Pocket depth; the floor at the walls rises by V depth, so the laminate under the bolts is unchanged, and the notice warns when the walls are left under 1.5 mm tall. V ridge: the floor rises to a ridge, the tongue grooved to match; the same location, more laminate under the bolts. Both mold from the upper half without undercut. The hub body's tongue follows it at the same Clearance all round." }
                 definition.hubFloor is HubFloor;
 
                 if (definition.hubFloor == HubFloor.VGROOVE || definition.hubFloor == HubFloor.VRIDGE)
@@ -2537,7 +835,7 @@ export const foilWing = defineFeature(function(context is Context, id is Id, def
                 isLength(definition.boreHeight, { (millimeter) : [6, 25, 40] } as LengthBoundSpec);
 
                 annotation { "Name" : "Bore corner",
-                             "Description" : "Radius of the bore's four corners, to match the rounded corners of an extruded aluminium flat bar (user: bar stock is not sharp-cornered). Limits 0-5 mm. Measure the bar and enter no more than its own radius - a bore corner larger than the bar's will not let the bar in, a smaller one only leaves a hair of gap in the corners; Typical 0.5-1.5 mm: 1 mm suits most 19-25 mm flat bar, 0 for a machined tongue. Half the clearance is added to it, as to the sides; the plug's handle and channel in the mold use the same corner." }
+                             "Description" : "Radius of the bore's four corners, to match the rounded corners of an extruded aluminium flat bar. Limits 0-5 mm. Measure the bar and enter no more than its own radius - a bore corner larger than the bar's will not let the bar in, a smaller one only leaves a hair of gap in the corners; Typical 0.5-1.5 mm: 1 mm suits most 19-25 mm flat bar, 0 for a machined tongue. Half the clearance is added to it, as to the sides; the plug's handle and channel in the mold use the same corner." }
                 isLength(definition.boreCorner, { (millimeter) : [0, 1, 5] } as LengthBoundSpec);
             }
 
@@ -2571,7 +869,7 @@ export const foilWing = defineFeature(function(context is Context, id is Id, def
                 definition.flatCsk is boolean;
 
                 annotation { "Name" : "Mount pad", "Default" : true,
-                             "Description" : "Adds a pad under the root that seats the wing on the flat bar at the modelled Incidence: a flat horizontal face, Pad width wide and Pad height below the underside's lowest point, its top following the root's own lower surface, from Flat start to the trailing edge (build 227, user: a wing bolted straight onto a bar takes the angle of its underside, not the angle it was drawn at - a Clark Y's flat lies 2.1 deg from its chord, a cambered NACA underside rocks on its curve; the pad is the shim that sets it). The bolts pass through it and the laminate under each head counts it. Off: bare underside, and the notice reports the angle the wing would seat at instead." }
+                             "Description" : "Adds a pad under the root that seats the wing on the flat bar at the modelled Incidence: a flat horizontal face, Pad width wide and Pad height below the underside's lowest point, its top following the root's own lower surface, from Flat start to the trailing edge (build 227). The bolts pass through it and the laminate under each head counts it. Off: bare underside, and the notice reports the angle the wing would seat at instead." }
                 definition.flatPadOn is boolean;
 
                 if (definition.flatPadOn)
@@ -2624,7 +922,7 @@ export const foilWing = defineFeature(function(context is Context, id is Id, def
                 isLength(definition.nacelleRearFair, { (millimeter) : [5, 25, 150] } as LengthBoundSpec);
 
                 annotation { "Name" : "Mouth wall %",
-                             "Description" : "Wall left round the bore at the socket's rear face, its mouth, as % of Wall; Rear fairing tapers the nacelle down to it (build 233, user). Round socket: that wall, less half the Clearance at 100. Square socket: its section shrinks in proportion to the larger side, so the walls come out near it, the narrower side's a little thicker. Limits 25-100 %. Typical 50 (the taper every earlier build made) for a round carbon tube in a slim fuselage; 75-100 for a metal bar in the Square socket, whose bending moment is largest at the mouth, where a thin lip splits first. 100 = no taper: the full nacelle ends square at the rear face, and a Foil fuselage on a Round socket is as wide as the nacelle." }
+                             "Description" : "Wall left round the bore at the socket's rear face, its mouth, as % of Wall; Rear fairing tapers the nacelle down to it (build 233). Round socket: that wall, less half the Clearance at 100. Square socket: its section shrinks in proportion to the larger side, so the walls come out near it, the narrower side's a little thicker. Limits 25-100 %. Typical 50 (the taper every earlier build made) for a round carbon tube in a slim fuselage; 75-100 for a metal bar in the Square socket, whose bending moment is largest at the mouth, where a thin lip splits first. 100 = no taper: the full nacelle ends square at the rear face, and a Foil fuselage on a Round socket is as wide as the nacelle." }
                 isReal(definition.mouthWallPct, { (unitless) : [25, 50, 100] } as RealBoundSpec);
 
                 annotation { "Name" : "Socket depth",
@@ -2658,7 +956,7 @@ export const foilWing = defineFeature(function(context is Context, id is Id, def
             if (definition.socketOn && (definition.wingJoint == WingJoint.ROUND || definition.wingJoint == WingJoint.SQUARE || definition.wingJoint == WingJoint.HUB))
             {
                 annotation { "Name" : "Root fairing", "Default" : false,
-                             "Description" : "Lofts the corner where the wing root meets the joint, instead of leaving a hard corner or a small fillet (build 241, user: lofted transitions, not fillets on hard faces). Sockets: the nacelle's own sections gain a concave flare each side, tangent to the nacelle and running into the skin, above and below. Flat hub: a flare round the hub's sides and front, tangent to its walls and running into the skin, in place of Hub fillet. Its radius is Fairing radius, held so it never climbs over the nacelle or the hub's top; behind the trailing edge it carries on for Fairing tail, else it eases to nothing just ahead of the trailing edge. Foil performance then counts the wing's two root junctions as lofted. Typical on for a low-drag joint; off keeps the joint as before build 241." }
+                             "Description" : "Lofts the corner where the wing root meets the joint, instead of leaving a hard corner or a small fillet (build 241). Sockets: the nacelle's own sections gain a concave flare each side, tangent to the nacelle and running into the skin, above and below. Flat hub: a flare round the hub's sides and front, tangent to its walls and running into the skin, in place of Hub fillet. Its radius is Fairing radius, held so it never climbs over the nacelle or the hub's top; behind the trailing edge it carries on for Fairing tail, else it eases to nothing just ahead of the trailing edge. Foil performance then counts the wing's two root junctions as lofted. Typical on for a low-drag joint; off keeps the joint as before build 241." }
                 definition.rootFairing is boolean;
 
                 if (definition.rootFairing)
@@ -3125,7 +1423,7 @@ export const foilStabiliser = defineFeature(function(context is Context, id is I
                 isLength(definition.padWidth, { (millimeter) : [5, 22, 80] } as LengthBoundSpec);
 
                 annotation { "Name" : "Pad height",
-                             "Description" : "How far the flat pad face stands above the section's highest point at the root (on the pad side). Limits 0-20 mm. Typical 5-8 mm: room for the fuselage seat to be full width and the bolt heads or threads to bite. 0 puts the flat exactly on the section's highest point, so the pad is only the flat face and its ramp, no raised block (build 201, user). Sets the pad plane the fuselage seats on." }
+                             "Description" : "How far the flat pad face stands above the section's highest point at the root (on the pad side). Limits 0-20 mm. Typical 5-8 mm: room for the fuselage seat to be full width and the bolt heads or threads to bite. 0 puts the flat exactly on the section's highest point, so the pad is only the flat face and its ramp, no raised block (build 201). Sets the pad plane the fuselage seats on." }
                 isLength(definition.padHeight, { (millimeter) : [0, 6, 20] } as LengthBoundSpec);
 
                 annotation { "Name" : "Flat start",
@@ -3133,7 +1431,7 @@ export const foilStabiliser = defineFeature(function(context is Context, id is I
                 isLength(definition.flatStart, { (millimeter) : [-100, -5, 100] } as LengthBoundSpec);
 
                 annotation { "Name" : "Front ramp", "Default" : true,
-                             "Description" : "Fairs the pad's front from just behind the leading edge up to Flat start with a smooth ramp. Off: the pad begins at Flat start with a square front face (build 202, user). Either way, where the pad-side skin is already flat at the pad plane over the pad's length - a Clark Y's flat side with Pad height 0 - no pad body is built at all: the skin itself is the seat and there is nothing to ramp or step." }
+                             "Description" : "Fairs the pad's front from just behind the leading edge up to Flat start with a smooth ramp. Off: the pad begins at Flat start with a square front face (build 202). Either way, where the pad-side skin is already flat at the pad plane over the pad's length - a Clark Y's flat side with Pad height 0 - no pad body is built at all: the skin itself is the seat and there is nothing to ramp or step." }
                 definition.padRamp is boolean;
 
                 annotation { "Name" : "Block to body", "Default" : false,
@@ -3241,11 +1539,6 @@ export const foilStabiliser = defineFeature(function(context is Context, id is I
             szMin = pad.padRel;             // pad underneath: its face is the lowest point of the root
         if (pad.on && pad.side == 1)
             szMax = pad.padRel;             // pad on top: its face is the highest point
-        // Height is where the seat plane sits relative to the fuselage centreline (build 134, user:
-        // "0 mm offset always has the mount interface on the centreline"). The stab is built at a
-        // provisional height and then shifted so its seat plane - the pad face, or the bare root
-        // surface - lands at axis + Height. Everything published below uses the shifted height
-        // (build 124: relinking the stab lifted the pad into the fuselage and the seat vanished)
         var contour = pad.contour;
         {
             var sockS;
@@ -3419,7 +1712,7 @@ export const foilPerformance = defineFeature(function(context is Context, id is 
             isReal(definition.otherDrag, { (unitless) : [0, 0, 200] } as RealBoundSpec);
 
             annotation { "Name" : "Tubercles", "Default" : true,
-                         "Description" : "With leading-edge tubercles on the Foil wing, reports what they would do as a separate line of the notice and a block of the report, never folded into the sweep's figures (build 232, user: call them out apart, not as a hidden overall impact). The charge the lifting line can compute: a trough-first stall, the local lift rising in the troughs by the chord's share of half the tubercle height. Then the published credits on the same take-off loading and stall speed: section CL max -5 % (two-dimensional tests at low Re) to +6 % (the humpback flipper at Re 0.5 million), the flipper's +4 deg stall angle as a bound, lift held past stall; and drag before stall of unknown sign within 8 % of the wing's profile drag, as a glide range. Typical on. Nothing happens without tubercles on the wing; off hides the line." }
+                         "Description" : "With leading-edge tubercles on the Foil wing, reports what they would do as a separate line of the notice and a block of the report, never folded into the sweep's figures (build 232). The charge the lifting line can compute: a trough-first stall, the local lift rising in the troughs by the chord's share of half the tubercle height. Then the published credits on the same take-off loading and stall speed: section CL max -5 % (two-dimensional tests at low Re) to +6 % (the humpback flipper at Re 0.5 million), the flipper's +4 deg stall angle as a bound, lift held past stall; and drag before stall of unknown sign within 8 % of the wing's profile drag, as a glide range. Typical on. Nothing happens without tubercles on the wing; off hides the line." }
             definition.tubercleCredits is boolean;
         }
 
@@ -3725,7 +2018,6 @@ export const foilPerformance = defineFeature(function(context is Context, id is 
         const vStall = (aStall < 1e8 && liftCoefAtStall > 0) ? sqrt(2 * W / (rho * liftCoefAtStall)) : -1;
         const toMargin = maxLocalClRatio(wing, Lw, pTo.alpha, clMaxWing, clMaxTip);
 
-        // ---------------- leading-edge tubercles: reported apart, never folded into the figures (build 232, user) ----------------
         var tub = { "on" : false, "note" : "" };
         if (definition.tubercleCredits != false && wing.bumpOn == 1 && wing.bumpAmp != undefined && wing.bumpAmp > 0)
         {
@@ -4252,7 +2544,7 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                 isLength(definition.grooveDepth, { (millimeter) : [0.5, 1.5, 5] } as LengthBoundSpec);
 
                 annotation { "Name" : "Land gap",
-                             "Description" : "How far the land sits below the parting face (build 244, user: so glass or a skin can be laid over it). 0: the halves touch on the land and pinch whatever runs out of the cavity to nothing, the earlier behaviour. Above 0: the lower half's land is lowered by this much, so the skin or a glass ply carried out of the cavity across the land is squeezed to this thickness instead of cut, and the halves bear on the flange outside the groove. Limits 0-2 mm, and at least 0.2 mm under Groove depth. Typical 0.2-0.5: the cured thickness of the plies you carry over, about 0.22 mm per 200 gsm ply at 50 % fibre." }
+                             "Description" : "How far the land sits below the parting face (build 244). 0: the halves touch on the land and pinch whatever runs out of the cavity to nothing, the earlier behaviour. Above 0: the lower half's land is lowered by this much, so the skin or a glass ply carried out of the cavity across the land is squeezed to this thickness instead of cut, and the halves bear on the flange outside the groove. Limits 0-2 mm, and at least 0.2 mm under Groove depth. Typical 0.2-0.5: the cured thickness of the plies you carry over, about 0.22 mm per 200 gsm ply at 50 % fibre." }
                 isLength(definition.landGap, { (millimeter) : [0, 0, 2] } as LengthBoundSpec);
             }
         }
@@ -4476,7 +2768,7 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                 if (definition.moldSource == MoldSource.FUSELAGE)
                 {
                     annotation { "Name" : "Core from mast",
-                                 "Description" : "Fuselage only: the core starts this far behind the mast's trailing edge; everything ahead of it - the nose, the hub bolts, the mast pocket and the stretch the wing's twist and the mast's load pass through - is laid up solid woven (build 219, user). Limits 0-100 mm. Typical 15-30 (default 20). The core ends Core end gap ahead of the stab's seat block, which stays solid for the stab's bolts." }
+                                 "Description" : "Fuselage only: the core starts this far behind the mast's trailing edge; everything ahead of it - the nose, the hub bolts, the mast pocket and the stretch the wing's twist and the mast's load pass through - is laid up solid woven (build 219). Limits 0-100 mm. Typical 15-30 (default 20). The core ends Core end gap ahead of the stab's seat block, which stays solid for the stab's bolts." }
                     isLength(definition.fusCoreFrom, { (millimeter) : [0, 20, 100] } as LengthBoundSpec);
 
                     annotation { "Name" : "Core end gap",
@@ -4750,10 +3042,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
         // skins, so it comes out of the tow. Build 117 left the whole plate as tow with no cut count
         var plateFill = 0;                                                    // woven plies inside the plate
         var plateArea = 0;                                                    // m2, one ply
-        // the plate as modelled: measured off the part (a copy split at the plate's underside), so a
-        // plate the user has edited by hand above this feature - fillets, chamfers, another outline, a
-        // thicker plate - is what the tray, the fill count and the template follow (user). Nominal
-        // numbers from the Foil mast if the measurement fails
         var plateAct;
         if (isMast && mastM.plateLength != undefined)
         {
@@ -4777,9 +3065,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
         }
         const skinArea = partArea * definition.skinPlies + plateArea * plateFill;   // m2 of cloth laid
         const skinVol = skinArea * tSkin / 1000 * 1e6;                      // cm3
-        // the caps fill Cap thick % of the CORE inside the skins, so the skin count changes the UD
-        // count and skins + caps can never exceed the section (build 114 measured against the whole
-        // section, so halving the skins left the UD count unchanged - user)
         var fusCore;             // fuselage: the tail-core plan (build 219), numbers in SI
         var fusCoreWhy = "";
         var capVol = 0;          // cm3
@@ -4817,10 +3102,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
             capPliesRoot = round(capF * max(tAt[0] - tSkins, 0) / 2 * over / tUd);
             capPliesTip = round(capF * max(tAt[nS] - tSkins, 0) / 2 * over / tUd);
             capLen = mastM.height;
-            // junction: every cap ply runs out over the root fillet onto the plate (Cap run-out, or to
-            // 2 mm short of the plate edge), and Tab plies per face of UD interleave with the caps,
-            // Tab length down the mast and the same run-out out over the plate (user: alternating
-            // layers of UD to tab the two surfaces together). Both displace tow / plate fill
             const roomOut = mastM.plateWidth != undefined ? max((mastM.plateWidth - tTopM) / 2 * 1000 - 2, 0) : 0;
             runOut = definition.capRunOut > 0 ? min(definition.capRunOut / millimeter, roomOut) : roomOut;
             tabN = definition.tabPlies;
@@ -5211,13 +3492,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                         defl += theta * dx;
                     }
                     const mRoot = Fs * (xSt - xR);
-                    // torsion and side bending (build 217, user: the fuselage also twists between the
-                    // wing, the stab and the mast). Rolling moments from a 60 / 40 split of the wing's
-                    // and the stab's lift at the load factor (a carve, one foot loading) twist the
-                    // fuselage from the hub to the mast and from the stab to the mast; the mast's side
-                    // load (Mast side g, as the mast's own check) bends it sideways from the hub to the
-                    // mast. Closed thin-walled section: Bredt's J = 4 Am^2 t / P for the skins, shear
-                    // tau = T / (2 Am t), plus the fill's rectangle torsion constant; G = E / 2.6
                     var torsNote = "";
                     var loadsW;
                     try silent { loadsW = getVariable(context, "foilWingLoads"); }
@@ -5504,10 +3778,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
             }
             if (size(cutsP) > 0)
                 opDeleteBodies(context, id + "coreCutTools", { "entities" : qUnion(cutsP) });
-            // dowel holes across each joint (user: the segments need keying): a hole along the span,
-            // 15 mm into each segment, at the section's thickest point where the core is at least
-            // 4 mm thick under the cap groove; diameter half that thickness, 3 to 8 mm, for a carbon
-            // or hardwood rod. Not in the winglet (the joint would not be square to the span there)
             var dowels = [];
             var dowelNote = "";
             // a milled core with Tile joint = Puzzle inlay (build 235): no dowels (their holes run along
@@ -5560,8 +3830,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                 }
                 const capTd = capF * max(thick * chord - tSkins * millimeter, 0 * meter) / 2;
                 const capHalf = capW * chord / 2;                        // the cap groove runs this far either side of the thickest point
-                // two dowels per joint (user): one each side of the thickest point, about a quarter
-                // chord apart, each moved toward the middle until the core is 4 mm thick there
                 var placedHere = 0;
                 var dNote = "";
                 for (var s = -1; s <= 1; s += 2)
@@ -5664,8 +3932,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                     coreInlayNote = "; no puzzle inlays (no joint has room for one)";
             }
             const segs = evaluateQuery(context, qBodyType(qHasAttribute("foilCoreBody"), BodyType.SOLID));
-            // milled: tabs on each section, bars at its mid-height out of both span ends, to hold it in
-            // the stock while both faces are cut (user: tabs on the model, the stock is the CAM's)
             var sheetNeed = 0 * meter;                                    // the tallest section against the sheet
             var sheetX = 0 * meter;                                       // the largest section with its tabs
             var sheetY = 0 * meter;
@@ -5683,11 +3949,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                     sheetY = max(sheetY, bx.maxCorner[1] - bx.minCorner[1]);
                     if (!tabsOn)
                         continue;
-                    // Tabs per edge on each edge, spread along the section, at the section's
-                    // own mid-height there: out of the leading edge forward and the trailing edge aft, so
-                    // the span ends stay clean for the joint. In a winglet the section is tilted and the
-                    // bar is placed on its tilted mid-point (user: the tips need tabs on both edges too);
-                    // a bar that does not meet its section is dropped, not left loose
                     var tabs = [];
                     const nPer = definition.coreTabsPerEdge == undefined ? 2 : definition.coreTabsPerEdge;
                     for (var e = 0; e < nPer; e += 1)
@@ -5832,14 +4093,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
             coreVent = coreR.vent;
             coreNote = " | CORE MOLD: cavity is the foam core (sections less " ~ fmt(definition.skinPlies * tSkin, 2) ~ " mm of skin each face, cap grooves " ~ fmt(capW * 100, 0) ~ "% chord wide), open at both tips so a poured foam can expand out; the core body is kept as a part";
         }
-        // stab with the pad underneath AND its tail fairing (Mount side Bottom, Tail fairing on): the
-        // pad-plane prism is written for a pad on top, so the mold is built on a copy mirrored in Z
-        // about the stab pivot - its pad is on top and the model, the mount map and the section are
-        // mirrored to match. A Y-symmetric stab molded upside down and turned over IS the stab (build
-        // 130: the pad-under stab's curtain loft failed on build 128). Without the tail there is no
-        // prism (build 201), so the mold keeps the stab's own orientation: the pad is a pocket in the
-        // lower half and the countersink cones hang from the upper half (build 205, user: "the stab
-        // is configured the opposite")
         var flipZ = false;
         var flipNote = "";
         if (!coreMold && definition.moldSource == MoldSource.STAB && stabRoot != undefined && stabRoot.padOn == 1 && stabRoot.padSide == -1 && stabRoot.tailOn != undefined && stabRoot.tailOn == 1)
@@ -5886,14 +4139,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
         const pbox = evBox3d(context, { "topology" : moldPart, "tight" : true });
         var lo = vector(pbox.minCorner[0] - f, pbox.minCorner[1] - f, pbox.minCorner[2] - definition.baseThick);
         const hi = vector(pbox.maxCorner[0] + f, pbox.maxCorner[1] + f, pbox.maxCorner[2] + definition.baseThick);
-        // mast: the two halves stop at the plate's underside (0.5 mm into the plate, a locating
-        // recess); the plate itself is formed by a third piece, a tray, built after the cavity cut.
-        // Molding the plate in the halves made a 10 mm wide, 60 mm deep slot in each (user: three
-        // parts, left, right and a top piece for the plate)
-        // Build 241 (user: "the top plate should only be for the top of the plate. all features should be on the
-        // mold sides so it releases"): the halves run on through the plate to its board face and form its edges and
-        // underside with the mast; the third piece is a lid that forms only the board face, with straight pins for
-        // the bolt holes along its own pull
         if (isMast)
             lo[1] = plateAct != undefined ? -plateAct.zBoard : -(mastM.baseZ + mastM.height + mastM.plateThick) * meter;
 
@@ -5958,13 +4203,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
         }
         else if (isFus)
         {
-            // fuselage (build 213): parted top and bottom along its sections' mid-height, the
-            // profile the Foil fuselage publishes (partZ: flat under the nose at the hub's top, a
-            // 0.2 mm step inside the body's front face, then the body, tail and seat mid-heights),
-            // so the mast pocket is a core on the upper half and the tongue a pocket in the lower
-            // (user: a left/right split cannot release the pocket). The nose's bolt holes and the
-            // stab's tapped holes are vertical - a pin from each half otherwise - so they are filled
-            // in the copy the cavity is cut from; drill and countersink after cure
             if (fusM.partZ == undefined)
                 throw regenError("The Foil fuselage above is older than this Foil mold (no parting profile) - paste the whole Feature Studio over again so both are the same build");
             if (coreMold)
@@ -5987,12 +4225,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                         "transforms" : [identityTransform()],
                         "instanceNames" : ["c"]
                     });
-            // every vertical hole the fuselage published ([x, z0, z1, r, rHead, cskSide, pinFrom]) is
-            // filled 0.3 mm inside each face, at head radius where it is countersunk, so neither half
-            // molds a full-size pin (build 214 filled through the whole block and cut holes in the
-            // mold - user). With Bolt cones on, a tapered cone from the countersunk face and a
-            // straight undersized pin for a tapped hole are added below, each from the half that
-            // forms the face it starts on; drill to size after cure
             if (fusM.holes == undefined)
                 throw regenError("The Foil fuselage above is older than this Foil mold (no hole list) - paste the whole Feature Studio over again so both are the same build");
             var fillsF = [qCreatedBy(id + "fusFill", EntityType.BODY)];
@@ -6234,8 +4466,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                 }
                 if (hubOn && hub.plan != undefined && hub.plan.on == 1)
                 {
-                    // the hub's block past the trailing edge and its fairing's tail (build 241, user: the pinch-off
-                    // groove did not follow the fairing)
                     const tx = moldPlanTailX(hub.plan, abs(y) / meter);
                     if (tx > -1)
                         teX = max(teX, tx * meter);
@@ -6289,16 +4519,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
             opLoft(context, segId, { "profileSubqueries" : [profiles[i], profiles[i + 1]] });
             curtain = append(curtain, qCreatedBy(segId, EntityType.BODY));
         }
-        // stab mount: the parting over the pad's plan is the pad-side skin (nose, ramp, pad plane out
-        // to the block edge), as a prism with exactly vertical walls 0.05 mm inside the pad's own
-        // walls, added to the curtain. The whole section, the pad walls and the tail fairing then sit
-        // in the half away from the pad and the other half forms only the flat face (the production layout).
-        // Build 87/88 did this with extra stations at the pad edge, whose sloped step face showed as
-        // slivers along the T; a prism has no such face
-        // Only with the tail fairing (build 201): the prism exists to keep the tail's rounded far face
-        // below the parting. A pad alone is a pocket in the pad-side half - vertical walls, a faired
-        // ramp - and needs no climb; with the climb the other half grew a block down to the pad plane
-        // (user: "a block in the mold on top" on a pad-under stab with no tail)
         const padClimb = padMap != undefined && padMap.tailOn != undefined && padMap.tailOn == 1;
         if (padClimb)
         {
@@ -6511,11 +4731,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
         const capEndT = isFlat ? tipT : tipT * (m.capOn == 1 ? (m.capEndT == undefined ? m.capEnd : m.capEndT) : 1);                       // mm at the very end of the cap (with plan rounding the thickness law is divided by the chord shrink, so this holds either way)
         const tipAdvice = " Tip section is " ~ fmt(tipT, 2) ~ " mm thick at the cap start, " ~ fmt(capEndT, 2) ~ " mm at its end: raise End ratio (or turn on Min tip), Cap end % or Tip thick % in the " ~
             (definition.moldSource == MoldSource.WING ? "Foil wing" : "Foil stabiliser") ~ " feature (1 mm or more molds reliably), or try more Split stations";
-        // mast (build 241, user): the halves form every feature that goes right through the plate - its bolt holes, their
-        // pins and countersink cones, as modelled - and the lid only the features that open onto the plate's top face
-        // without going right through (a rebate, slots, a cable channel). Those are found as the air inside the plate's
-        // footprint (its outline swept through its thickness), less the part and the bolt holes, that opens onto the
-        // board face; they are left void in the halves (added to their cavity tool) and given to the lid
         var mastFilled = false;
         var mastTopVoids = [];      // the plate's top-face features, given to the lid
         var mastTopVol = 0 * meter ^ 3;
@@ -6816,14 +5031,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                         "operationType" : BooleanOperationType.SUBTRACTION,
                         "keepTools" : true
                     });
-            // the copy's holes leave pins carrying the countersink at their free end (the mast's
-            // countersinks are on its underside, which faces the tray's opening): mushroom heads that
-            // would lock the plate in (user). Clear each of them with a cylinder of the head diameter
-            // + 0.3 mm (a box over the whole pocket, build 172 and before, squared off any edited
-            // plate outline) and stand straight pins instead, 0.5 mm under the bolt diameter, on the
-            // mast's own pattern; countersink after cure
-            // the lid forms the board face and the top-face features only; the bolt holes, pins and countersink cones are
-            // the halves' (build 241, user)
             if (size(mastTopVoids) > 0)
                 opBoolean(context, id + "trayTopJoin", { "tools" : qUnion([qHasAttribute("foilPlateTray"), qHasAttribute("foilMastTopVoid")]), "operationType" : BooleanOperationType.UNION });
             const trayX = 2 * (hlT + f);
@@ -7102,12 +5309,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
         var nCones = 0;
         if (conesOn)
         {
-            // the cone stands on the COUNTERSUNK face, in the half that forms it, wide end at the skin,
-            // and tapers through the section to Cone web short of the other skin (user, build 178:
-            // the pins must always start from the side with the countersink). The through hole was
-            // filled before the cavity cut, so this cone and the molded countersink above it are the
-            // only things in the hole; drill to clearance after cure. A pad over the far face stays
-            // solid above the web
             const sideDn = cskSideM == 1;                          // countersink on top: cone points down
             const r0 = definition.coneDia / 2;
             var coneQs = [];
@@ -7285,8 +5486,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                     });
             if (podPlug)
             {
-                // no pinch-off round the pod (user): clear the ring from the pod's band, nose to the
-                // block's aft edge, so the plug channel and the pod flanks stay ungrooved
                 const yP = -mastM.podZ * meter;
                 const rP = mastM.podDia / 2 * meter + definition.landWidth + definition.grooveWidth + 1 * millimeter +
                     (mastM.podTilt != undefined ? abs(sin(mastM.podTilt * radian)) * mastM.podLength / 2 * meter : 0 * meter);
@@ -7674,18 +5873,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                     }
                 }
             }
-            // the flange under each pocket (build 235, the user's main wing: on a drooped wing a flat floor left a
-            // 30 mm key 3-4 mm proud of the face the other half closes on, which stops the mold closing). Ray
-            // casts on its half before any pocket is cut (the upper half's flange top is its underside) at the
-            // key's centre, its ends and halfway along its axis, and either side across it; a plane fitted
-            // through them (least squares about the centre). The floor is that plane moved Inlay depth into
-            // the half along its normal; the walls stay vertical for a 3-axis cutter (a vertical prism of the
-            // plan outline intersected with a slab on the floor plane); the key, a flat square-edged plate
-            // Inlay depth less Key flush thick, lies on the floor with its face Key flush from the plane all
-            // along it, its footprint centred on the pocket. Tilted, a square-edged plate's ends lean t tan
-            // (tilt) out of vertical, so the pocket is t tan(tilt along the key) longer at each end, and its
-            // flanks give the plate's lean and foreshortening room (Python twin: inlay_tilt_allowance); the
-            // wedges fill with glue. The grown pocket is checked against its keep-outs again
             hv = moldHalves(context, solids, lo, hi);
             var cutU = [];
             var cutL = [];
@@ -7979,14 +6166,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                         });
             }
         }
-        // ---------------- pry sections (build 242) ----------------
-        // User: Easy Composites chamfer the parting line "to allow a wedge tool to pry it open"; "areas not corners to
-        // start the mold opening, not the entire length but sections"; "no larger than 100 mm"; "only large enough to take
-        // a wedge". A 45 deg V across the parting on each outer face: a square bar turned 45 deg about the face's run,
-        // centred on the parting line, found by a ray up into the upper half 0.5 mm inside the face, cut from both halves.
-        // Along each face, one in the middle of every stretch between seams (both halves' seams merged, so each tile gets
-        // one and none straddles a joint), more at Pry spacing on a long stretch; none in the plug / pad channel band, none
-        // within 10 mm of a corner, none on the mast's board-face end (the plate tray covers it)
         var nPry = 0;
         var pryFaces = 0;
         if (definition.pryOn == true && !preview)
@@ -8058,12 +6237,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
             foilPrint(context, moldLogKey, "PRY: " ~ nPry ~ " sections " ~ fmt(definition.pryLength / millimeter, 0) ~ " mm long, 45 deg, " ~ fmt(definition.pryDepth / millimeter, 1) ~ " mm into each half, on " ~ pryFaces ~ " faces");
         }
 
-        // ---------------- ejector holes (build 243) ----------------
-        // User: pins "to hammer complex deep part out of a mold"; a choice of dowel or printed plug. Spots from rays, not from
-        // the model: along each candidate line the part's thickness from the two halves' cavity faces, the thickest spot
-        // whose rim is smooth on both faces (no pin, pocket or cone edge within Ejector dia / 2 + 1.5 mm). Wing / stab: lines
-        // either side of the joint, the first that passes nearest the centre (the solid root zone); mast: lines near each
-        // end; fuselage: the centreline, one per third of its length. Each spot gets a hole through both halves
         var nEject = 0;
         var ejectAt = [];
         var ejectStr = "";
@@ -8173,12 +6346,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
                     var plugQ;
                     if (plugs)
                     {
-                        // the plug (build 245, user: "ejector pins have to be pushed into the mold, you have a head that would
-                        // prevent this"; "the head could be on the inside"): the head at the cavity end, in a counterbore in the
-                        // cavity face, so the laminate's pressure seats it on the counterbore's shoulder and a punch from outside
-                        // pushes it, and the part, inward. Shank and head as one, kept only where the tile's copy is, so the head's
-                        // face is the cavity's and the shank's end flush with the outer face; found after the hole is cut by the
-                        // point it holds (a boolean's result keeps no reliable identity)
                         opPattern(context, eid + "copy", { "entities" : tile, "transforms" : [identityTransform()], "instanceNames" : ["c"] });
                         const shank = moldPin(context, eid + "shank", vector(sp[0], sp[1], zOut + sg * 1 * millimeter), vector(sp[0], sp[1], zCav - sg * dIn), rE - fitE);
                         const head = moldPin(context, eid + "head", vector(sp[0], sp[1], zCav - sg * dIn), vector(sp[0], sp[1], zCav + sg * headE), rE + 2 * millimeter - fitE);
@@ -8207,10 +6374,6 @@ export const foilMold = defineFeature(function(context is Context, id is Id, def
             foilPrint(context, moldLogKey, "EJECT: " ~ (plugs ? "printed plugs " : "dowel holes ") ~ fmt(definition.ejectorDia / millimeter, 1) ~ " mm, " ~ nEject ~ " spot" ~ (nEject == 1 ? "" : "s") ~ " through both halves" ~ (nEject > 0 ? ": " ~ ejectStr : " - no smooth solid spot found"));
         }
 
-        // ---------------- mast release check (build 241, user: "did you check if your mast changes release?") ----------------
-        // A fresh flat copy of the mast; the lid slid off the board face, and the tiles at the plate end of each half slid down
-        // the mast (the user: "the mold will slip down from the top plate when the lower section is released") and, for
-        // comparison, apart across the parting. Any slide that runs into the part is a lock
         var releaseNote = "";
         var releaseWarn = "";
         if (isMast)
@@ -10219,10 +8382,6 @@ function moldCoreBody(context is Context, id is Id, m is map, mini is map, base 
     if (size(profiles) < 2)
         return undefined;
     opLoft(context, id + "coreLoft", { "profileSubqueries" : profiles });
-    // tip vent (user: leave the tips open so a poured foam can expand out): the outermost core
-    // section carried straight out along +Y past the block's side, cut with the cavity and then
-    // removed, so the cavity is a channel open at the tip. Straight in Y, not up a winglet, so it
-    // stays with the parting's flat continuation beyond the tip. ventLen 0 = no vent (printed core)
     const withVent = ventLen > 0 * meter;
     var ventQ = qNothing();
     if (withVent)
@@ -11168,11 +9327,6 @@ function fairClosest(sq is boolean, a is number, b is number, py is number, pz i
     return { "d" : d0, "th" : th0 };
 }
 
-/**
- * The circle of radius r tangent to the line z = L (above it for the upper side, below for the lower) and
- * externally to the ellipse (a, b), on the +y side: centre, the tangent angle on the ellipse, the foot on the line.
- * The twin: the fairing prototype (bisection on the centre's y). Undefined when no such circle exists.
- */
 function fairFillet(sq is boolean, a is number, b is number, L is number, r is number, upper is boolean, k is number)
 {
     // in the space squeezed across by k (Fairing spread): a circle there is the fillet stretched k times wider than
@@ -11551,8 +9705,6 @@ function buildFairedNacelle(context is Context, id is Id, definition is map, m i
                         const ue = (x - xTE) / (x1 - xTE);
                         e = ue * ue * (3 - 2 * ue);
                     }
-                    // the web on the shared law (fairWebZ), which the mold also parts on (user, with pictures of the
-                    // mold: a web off the mold's parting was split by it)
                     const zw = tailOn ? fairWebZ(x / meter, xTE / meter, x1 / meter, zTE / meter, sTE, axisZ / meter) - zc / meter : (zTE - zc) / meter;
                     Lu = zw + hw;
                     Ll = zw - hw;
@@ -11830,12 +9982,6 @@ function hubFairLines(upper is array, lower is array, model is map, xTE is numbe
     return [zTE + d + webT, zTE + d];
 }
 
-/**
- * One section of the hub fairing at the outline point (px, py) with outward normal (nx, ny), numbers in m: the arc
- * tangent to the wall (u 0) and to the line through its foot (its slope along the normal taken there), radius rLaw
- * held under 90 % of the wall's height above the line and its foot 3 mm behind the leading edge (0.3 mm at least);
- * a hub top under the line sinks the arc into the wing with it. The twin: hub_twin.py section().
- */
 function hubFairSection(upper is array, lower is array, model is map, xTE is number, zTE is number, webT is number, xLE is number, zTop is number, rLaw is number,
     px is number, py is number, nx is number, ny is number, k is number) returns map
 {
@@ -11895,17 +10041,6 @@ function hubFairSection(upper is array, lower is array, model is map, xTE is num
     return { "r" : r, "zc" : zc, "foot" : t, "footz" : footz, "mid" : [k * (r + r * cos(am * radian)), zc + r * sin(am * radian)], "arc" : arc, "bots" : bots, "hwall" : hwall };
 }
 
-/**
- * The flat hub's root fairing (build 241, wing 1.064; twin designs/jason/tuning/fairing/hub_twin.py): one body lofted
- * along the hub's D in plan, from its back on one side, round the front, to its back on the other; every section
- * lies in the plane normal to the outline (YZ planes along the sides, radial planes round the front) and is the
- * region between the wall (0.3 mm inside it), a concave arc tangent to the wall and to a line 0.4 mm inside the skin,
- * its foot, and a bottom inside the wing (hubFairSection). With the hub running 5 mm or more past the trailing edge
- * the radius holds to the trailing edge and eases to nothing over Fairing tail, its line there the top of a web on
- * the trailing edge's height and droop (its bottom on the mold's parting), and a sheet lofted spanwise each side
- * gives the plan radius where the web leaves the trailing edge; otherwise it eases to nothing at the hub's back or
- * just ahead of the trailing edge. Returns on, rMax, reach (m from the centreline), note.
- */
 function buildHubFairing(context is Context, id is Id, definition is map, m is map, upper is array, lower is array, x0v is ValueWithUnits, x1v is ValueWithUnits,
     hwv is ValueWithUnits, zTopv is ValueWithUnits, xLEv is ValueWithUnits, xTEv is ValueWithUnits, noseWall is number) returns map
 {
@@ -12156,22 +10291,6 @@ function buildHubFairing(context is Context, id is Id, definition is map, m is m
                   ", easing to nothing by X " ~ fmt(xEnd * 1000, 0) ~ (x1 < xTE ? " mm, the hub's back" : " mm, just ahead of the trailing edge")) };
 }
 
-/**
- * The hub's nose fairing, properly faired (build 241, wing 1.070; twin designs/jason/tuning/fairing/nose_twin.py): a
- * production foil's nose - a ridge on the top skin ahead of the fuselage rising to the fuselage's top at the pocket's
- * front wall, its feet sweeping into the skin. One body lofted through YZ sections from a nose point (xF0) to the wall
- * (xW). Each section is a crown (a superellipse of half-width a and height H above the skin, exponent n: Top shape, 1 a
- * pointed ridge, 2 round, large flat) with a concave arc of radius r each side tangent to the crown's side and to a
- * line 0.4 mm inside the skin, squeezed across by Fairing spread, and a bottom 40 % of the thickness inside the wing.
- * The FOOT line is the plan: a superellipse (Nose fullness) from the nose to the root fairing's foot at the wall,
- * reached by the hub's front (x0) and held, so it is widest at the fuselage and runs on behind the wall; the crown's
- * edge keeps the wall's crown-to-foot ratio along the nose, and over the hub sits on the hub's full width (the block is
- * 0.5 mm narrower under the fairings) and as wide as its top needs to clear the hub's top; H rises as a smoothstep to
- * Nose height above the hub's top; n eases from Top shape over the first 70 % of the nose to flat at the wall, where
- * the last section is the root fairing's own wall section (hubFairSection at xW) with the bar's box on top, so the side
- * fairing runs on from it as one surface. Unioned with the wing. Returns on, vol (cm3), foot (the wall's, from the
- * centreline), warn, note.
- */
 function buildNoseFairing(context is Context, id is Id, definition is map, m is map, upper is array, lower is array, xF0v is ValueWithUnits, xWv is ValueWithUnits,
     x0v is ValueWithUnits, hwv is ValueWithUnits, zTopv is ValueWithUnits, noseHv is ValueWithUnits, xLEv is ValueWithUnits, xTEv is ValueWithUnits, allSolid is Query) returns map
 {
@@ -12236,11 +10355,6 @@ function buildNoseFairing(context is Context, id is Id, definition is map, m is 
             const sid = id + ("noseSec" ~ k);
             var sk = newSketchOnPlane(context, sid, { "sketchPlane" : plane(vector(x, 0, 0) * meter, X_DIRECTION, Y_DIRECTION) });
             {
-                // the laws along the nose (the twin's)
-                // every section the same seven edges (two crown splines, two arc splines, two feet, the bottom), so the
-                // loft matches them: the wall's is the root fairing's wall section as a near-box (n 12, a hw, r its own)
-                // the foot line: a teardrop to the wall's foot (Nose fullness); the hub has no front of its own ahead
-                // of the wall (its block starts there), so nothing has to be cleared
                 const sH = (x - xF0) / (xW - xF0);
                 var f = fWall * (1 - (1 - sH) ^ mPlan) ^ (1 / mPlan);
                 f = max(f, 2.5e-3);                                      // the nose section 3 mm wide, not a sliver
@@ -12439,12 +10553,6 @@ function boxTopRound(sketch is Sketch, a is ValueWithUnits, z0 is ValueWithUnits
     }
 }
 
-/**
- * A prism along X from xa to xb whose YZ section is the hub's V pocket (pocket true) or the tongue that fits it:
- * walls at +-hwP, the floor zSh at the walls falling (or rising) straight to zAp on the centreline, closed by a
- * line at zTopL; the shoulders rounded at rSh, the apex at rAp (0 sharp). The twin: tuning/hub_v/hub_v_twin.py. The
- * body is qCreatedBy(baseId, BODY); the sketch is deleted.
- */
 function hubVPrism(context is Context, baseId is Id, xa is ValueWithUnits, xb is ValueWithUnits, hwP is ValueWithUnits, zSh is ValueWithUnits, zAp is ValueWithUnits,
     zTopL is ValueWithUnits, rSh is ValueWithUnits, rAp is ValueWithUnits, pocket is boolean)
 {
@@ -12581,9 +10689,6 @@ function buildWingHub(context is Context, id is Id, rawDefinition is map, m is m
     const rF = fairOn ? 0 * meter : definition.hubFillet;    // the root fairing (build 241) takes the join fillet's place
     if (definition.hubLength < hw + 2 * millimeter)
         throw regenError("Hub length must be at least half Hub width + 2 mm: the hub's front is a semicircle of half its width", ["hubLength", "hubWidth"]);
-    // the hub starts at the apex and runs aft, its top level with the apex (user: no higher than the
-    // root profile, and only behind its highest point). Held far enough behind the leading edge for
-    // the front fillet's foot, and ahead of the trailing edge
     var x0 = xApex + definition.hubFromApex;
     var placeNote = "";
     const xFrontMin = xLE + rF + 4 * millimeter;
@@ -12597,9 +10702,6 @@ function buildWingHub(context is Context, id is Id, rawDefinition is map, m is m
     var x1 = x0 + definition.hubLength;                // may run past the trailing edge as a block
     const zTop = zApex + definition.hubHeight;
     const pDepth = definition.pocketDepth;
-    // the pocket floor's V (build 241): vd > 0 a groove (the centreline below the walls' floor), < 0 a ridge. The
-    // centreline, where the bolts are, stays at Pocket depth: a groove raises the floor at the walls by V depth
-    // instead of sinking the centre (user: keep the depth below the bolts), a ridge raises the centre
     const vOn = definition.hubFloor != undefined && definition.hubFloor != HubFloor.FLAT;
     var vNote = "";
     var vWarn = "";
@@ -12860,8 +10962,6 @@ function buildWingHub(context is Context, id is Id, rawDefinition is map, m is m
         const shrink = fairOn && definition.mirror ? 0.5 * millimeter : 0 * meter;
         if (definition.hubNoseOn == true && fairOn && definition.mirror)
         {
-            // the nose fairing is the hub's front (wing 1.070, the user: "just remove the front of the hub, this is a
-            // new front"): the block runs from 1 mm ahead of the pocket's front wall back, square at the front
             moldBox(context, id + "hubRear", vector(x0 + definition.pocketFrom - definition.pocketClear - 1 * millimeter, -(hw - shrink), zBot), vector(x1, hw - shrink, zTop));
         }
         else
@@ -13075,8 +11175,6 @@ function buildWingHub(context is Context, id is Id, rawDefinition is map, m is m
             " Nm, yaw before it slips about " ~ fmt(0.3 * nB * F * rMean, 0) ~ " Nm (friction 0.3), " ~ fmt(F / aFl / 1e6, 0) ~ " MPa under each flange (estimates)";
     }
 
-    // ---- nose fairing (build 241, wing 1.070): the hub's front faired, the Omen way, as one lofted body ----
-    // buildNoseFairing; needs the root fairing, whose wall section it shares so the sides run on as one surface
     var noseNote = "";
     var noseWarn = "";
     var noseBuilt = false;
@@ -13084,8 +11182,6 @@ function buildWingHub(context is Context, id is Id, rawDefinition is map, m is m
     const xW = px0 - cl;                                          // the pocket's front wall
     var xF0 = xW;
     var zTopF = zTop;
-    // Nose height 0: the hub body's default top, Body height 22 above the hub's underside (the user: the defaults match
-    // the tool's own fuselage; a bar is the custom case)
     const noseHIn = definition.hubNoseOn == true && definition.hubNoseHeight != undefined ? definition.hubNoseHeight : 0 * meter;
     const noseH = noseHIn > 0.05 * millimeter ? noseHIn : max(zBot + 22 * millimeter - zTop, 0.5 * millimeter);
     if (definition.hubNoseOn == true)
@@ -13108,7 +11204,7 @@ function buildWingHub(context is Context, id is Id, rawDefinition is map, m is m
             noseBuilt = nf.on == 1;
             noseVol = nf.vol;
             noseWarn = noseWarn ~ nf.warn;
-            if (!noseBuilt)   // an error, not a notice line and nothing built (user: "errors are better than silent failures")
+            if (!noseBuilt)
                 throw regenError("Nose fairing:" ~ nf.warn ~ " turn it off, or change Fairing length, Nose height or the hub", ["hubNoseOn", "hubNoseLen", "hubNoseHeight"]);
             if (noseBuilt)
                 noseNote = " | nose fairing from X " ~ fmt(xF0 / millimeter, 0) ~ " (" ~ fmt((xW - xF0) / millimeter, 0) ~ " mm ahead of the pocket's front wall) rising to " ~ fmt(noseH / millimeter, 1) ~
@@ -13210,17 +11306,6 @@ function seatLineAngle(lower is array, xr is ValueWithUnits) returns ValueWithUn
     return atan2((hull[k + 1][1] - hull[k][1]) / meter, (hull[k + 1][0] - hull[k][0]) / meter);
 }
 
-/**
- * Mount pad under the root for the Flat mount (build 227, user: "when the front wing fuselage joint is
- * directly bolted it needs a pad to set the incidence"). Worked in a mirrored frame z' = -z, as the
- * stab's pad is, so the pad stands "above" the seat surface: top = the root's own lower surface,
- * lifted 0.5 mm into the wing so the union overlaps; bottom = a flat horizontal face Pad height beyond
- * the underside's lowest point; Pad width across the span; from Flat start (or a ramp from 1 mm
- * behind the nose) to the trailing edge. A side prism intersected with a plan prism, unioned with the
- * wing. Where the underside already lies on the pad plane over the pad's length nothing is built.
- * upper TE -> LE, lower LE -> TE, world frame with the root pivot at the origin.
- * Returns { on, bodyOn, padZ (world Z of the seat face), xFlat, xStart, note }.
- */
 function buildWingFlatPad(context is Context, id is Id, definition is map, upper is array, lower is array) returns map
 {
     var surf = [];
@@ -13621,7 +11706,7 @@ function buildWingSocket(context is Context, id is Id, definition is map, m is m
     var xs = [];
     var halfW = [];
     var halfH = [];
-    var cz = [];      // section centres: the blend starts on the root's mid-thickness and eases to the socket's axis (user: with Socket height the front must stay inside the chord's height)
+    var cz = [];
     const nB = 10;
     for (var k = 0; k <= nB; k += 1)
     {
@@ -13651,8 +11736,6 @@ function buildWingSocket(context is Context, id is Id, definition is map, m is m
         halfH = append(halfH, Rh);
         cz = append(cz, axisZ);
     }
-    // ---- the nacelle: with Root fairing (round socket) one loft whose sections carry the fairing (build 241,
-    // user: smooth joins, no seams), else the plain ellipses ----
     var fair = { "on" : 0, "note" : "" };
     var nacelleBuilt = false;
     if (definition.rootFairing == true)
@@ -14135,10 +12218,6 @@ export const foilFuselage = defineFeature(function(context is Context, id is Id,
                 else if (seatW < padW - 1 * millimeter && !(stabRoot.blockOn != undefined && stabRoot.blockOn == 1))
                     warnings = append(warnings, "the flat seat on the tube is only " ~ fmt(seatW / millimeter, 1) ~ " mm wide against a " ~ fmt(padW / millimeter, 0) ~
                         " mm pad - turn the Foil stabiliser's Block to body on (cheeks beside the tube), or set its Height closer to 0 for a wider flat");
-                // seat: everything below the stab's mount contour (ramp from the nose, then the pad
-                // plane) from the seat start to the end of the fuselage - a prism whose top is that
-                // contour, lofted across the body. Build 104 cut a flat plane at the pad plane and
-                // left a wedge open over the ramp (user: "a large gap at the front of the stab")
                 const hw = max(R, padW / 2) + 1 * millimeter;
                 const zBelow = zA - R - 2 * millimeter;
                 var top = [];
@@ -14485,7 +12564,6 @@ function buildHubFuselage(context is Context, id is Id, definition is map, hub i
         throw regenError("Body height puts the body's top under the hub's top + 3 mm - raise Body height (the hub is " ~ fmt((zTopH - zBotH) / millimeter, 1) ~ " mm from its underside to its top)", ["bodyHeight"]);
     if (zNose > zBody + 0.01 * millimeter)
     {
-        // an error, not a quiet adjustment (user: "errors are better than silent failures")
         if (noseF)
             throw regenError("the wing's nose fairing tops out at Z " ~ fmt(zNose / millimeter, 1) ~ " mm, above this body's top (Z " ~ fmt(zBody / millimeter, 1) ~ ", Body height " ~ fmt(definition.bodyHeight / millimeter, 1) ~ ") - set Body height to " ~ fmt((zNose - zBotH) / millimeter, 1) ~ " or more, or lower Nose height on the Foil wing", ["bodyHeight"]);
         throw regenError("Nose height puts the nose's front above the body's top - lower Nose height or raise Body height", ["noseHeight", "bodyHeight"]);
@@ -14580,10 +12658,6 @@ function buildHubFuselage(context is Context, id is Id, definition is map, hub i
         }
     }
     }
-    // ---- tongue into the open pocket ----
-    // the tongue's underside on the wing's pocket floor (build 241: a V groove or ridge, offset up by the clearance
-    // along each face, its corners at the pocket's radius less the clearance where the pocket's is convex, plus it
-    // where concave; twin tuning/hub_v/hub_v_twin.py)
     const vdF = hub.vDepth != undefined ? hub.vDepth * meter : 0 * meter;
     const pwF = tongueW / 2 + cl;                                         // the pocket's half width
     const kF = cl * sqrt(1 + (vdF / pwF) * (vdF / pwF));
@@ -15177,7 +13251,7 @@ function buildStabMount(context is Context, id is Id, definition is map, m is ma
     var padM = 0 * meter;      // pad plane in the mirrored frame (z' = sgn * z)
     var padX = [];             // x span of the pad body on the centreline, and of a block's fill there with
     var blockX = [];           // the height it reaches (mirrored frame): the countersink check counts both
-    var blockFarM = 0 * meter; // (build 234, user)
+    var blockFarM = 0 * meter;
     var xEnd = xMax;
     const arm = definition.arm;
     const hgt = definition.height;
@@ -15274,9 +13348,6 @@ function buildStabMount(context is Context, id is Id, definition is map, m is ma
             }
         }
 
-        // a pad-side skin that is already flat at the pad plane over the pad's length (a Clark Y's
-        // flat side with Pad height 0) needs no pad body: the skin is the seat, and a ramp would only
-        // fill the leading edge's round with a block (build 202, user)
         var padGap = 0 * meter;
         for (var k = 0; k <= 24; k += 1)
         {
@@ -15363,9 +13434,6 @@ function buildStabMount(context is Context, id is Id, definition is map, m is ma
             }
             zLoW = min(zLoW, sgn * padM) - 2 * millimeter;
             zHiW = max(zHiW, sgn * padM) + 2 * millimeter;
-            // aft edge: square across at the root TE, or, where a root tail curves the trailing edge
-            // forward across the pad by more than 0.2 mm and no Tail fairing carries on behind it, the
-            // trailing edge itself, so the pad's corners do not hang behind it (build 234, user)
             var aftEdge = [];                                         // +hw -> -hw, empty = square
             if (!tailOn && size(across) == 8)
             {
@@ -15577,9 +13645,6 @@ function buildStabMount(context is Context, id is Id, definition is map, m is ma
                 const rHead = boltHead(definition.boltSize, 2 * rb) / 2;
                 const cskD = rHead - rb;
                 var tLoc = abs(profileZAt(upper, bx) - profileZAt(lower, bx));
-                // the pad, and a block's fill on the bolt line, are material under the head too, from the
-                // countersunk skin to the face the fuselage seats on (build 234, user: count the pad as
-                // the wing's flat mount does)
                 var tWith = "";
                 const inPad = size(padX) == 2 && bx >= padX[0] && bx <= padX[1];
                 const inBlock = size(blockX) == 2 && bx >= blockX[0] && bx <= blockX[1];
@@ -15886,12 +13951,6 @@ function stallAlpha(m is map, L is map, clRoot is number, clTip is number) retur
     return best;
 }
 
-/**
- * Stall angle with leading-edge tubercles (build 232): the first station inboard of 95 % span to reach f x its CL
- * max, where inside the tubercle range the local cl is raised by the chord's share of half the tubercle height, which
- * is the troughs' cl (the twin at 120 modes: a 2.6 % chord ripple gives a 2.5 % cl ripple - the loading cannot follow
- * a ripple shorter than a chord, so the cl does the opposite of the chord). ripple false = the smooth wing at f x CL max.
- */
 function tubercleStallAlpha(m is map, L is map, clRoot is number, clTip is number, f is number, ripple is boolean) returns number
 {
     var best = 1e9;
@@ -16044,9 +14103,6 @@ function partsDrag(ctx is map, V is number) returns map
     var fus = 0;
     if (ctx.mastOn && ctx.mastSub > 0)
     {
-        // strip by strip over the wetted span (build 241, user: a mast thickened below the waterline was missed by the
-        // one section at half the submerged depth): friction x form factor at each strip's own chord and thickness,
-        // spray at the waterline's thickness (twin designs/jason/tuning/mast_ultra1150.py)
         const nS = 12;
         for (var i = 0; i < nS; i += 1)
         {
@@ -16100,11 +14156,6 @@ function faceCd(side is string, finish is string) returns number
     return finish == "LOFT" ? 0.02 : (finish == "BARE" ? 0.2 : 0.15);
 }
 
-/**
- * Interference drag (N) of one junction where a strut or wing root of thickness t and chord c (m) meets a wall
- * or body at about 90 deg, zero lift: Hoerner, Fluid-Dynamic Drag (1965) ch. 8, dCD on t^2 = 0.75 t/c -
- * 0.0003/(t/c)^2, favourable below about 7.4 % thick (floored at zero). The twin: reference_checks.junction_drag.
- */
 function junctionDrag(q is number, t is number, c is number, finish is string) returns number
 {
     if (t <= 0 || c <= 0)
@@ -17533,13 +15584,6 @@ function foilStationEtas(m is map) returns array
         for (var j = 0; j <= 4; j += 1)
             es = append(es, (capStart + m.capLength * sin((PI / 2 * j / 4) * radian)) / h);
     }
-    // the span line's drop and gull (build 235): stations through the drop region, so the loft follows
-    // dropShape instead of bridging it in one span. A superellipse n 3 with 9 stations put the first
-    // station after the root near eta 0.34, and the loft drooped almost linearly from the root, up to
-    // 1.6 mm below a 50 mm S-curve's law by y 60, while the mold's parting follows the law: the lower
-    // half lapped over the thin trailing edge (user's studio). Thirteen evenly through [Drop from, Drop
-    // to], and two near each end of the drop, where its curvature jumps; each only where no station
-    // above sits within 1.5 mm, so no sliver-thin loft span is made
     const hasDrop = (m.tipDrop != undefined && abs(m.tipDrop) > 1e-6) || (m.rootDihedral != undefined && abs(m.rootDihedral) > 1e-6);
     if (hasDrop)
     {
@@ -17639,15 +15683,6 @@ function wingletFrame(m is map, eta is number) returns map
     return { "on" : true, "y" : wp.y, "z" : wp.z, "phi" : wp.phi };
 }
 
-/**
- * Roll feel of one surface (build 230): Cl_beta per radian from a horseshoe vortex lattice on the
- * surface's own span line (wingletFrame: drop, gull, winglet) and quarter-chord line (sweep, align),
- * 12 panels a side, cosine spaced, at 4 deg and sideslip +-2 deg; + = rolls into the sideslip, as
- * anhedral does. deg is the straight anhedral from the root that gives the same Cl_beta on the same
- * planform (flat and 6 deg references, linear to 0.1 deg over 0-8 deg). The surface alone: the mast's
- * side force dominates the whole foil's roll, so this compares shapes rather than predicting the feel.
- * Python twin: reference_checks.roll_response.
- */
 function rollResponse(m is map) returns map
 {
     const n = 12;
@@ -17787,20 +15822,6 @@ function shapeIntegral(pl is map, kind is number, k is number, td is number) ret
     return sum / (3 * N);
 }
 
-// ---------------------------------------------------------------------------
-// Tabulated section tables (chord-normalised x, y; upper and lower, LE -> TE).
-// Source: UIUC Airfoil Coordinates Database, via airfoiltools.com (Lednicer format).
-//   E817:    Eppler E817 hydrofoil.       Published: 11.0% thick at 32.9%c, 2.9% camber at 66.7%c.
-//   E818:    Eppler E818 hydrofoil.       Published: 9.4% thick at 33.1%c, 2.8% camber at 67%c.
-//   NACA63412: NACA 63(1)-412.            Published: 12.0% thick at 34.9%c, 2.2% camber at 50%c.
-//   CLARKY:  Clark Y (UIUC clarky.dat).   Published: 11.7% thick at 28%c, 3.4% camber at 42%c.
-//            The classic flat-bottomed section: its lower surface is a straight line from 30%c
-//            to the trailing edge, so a stab in it mounts flat side to the fuselage (Invert on).
-//            Thickness is scaled about that flat lower surface (tableSection keepLower), not the
-//            camber line, so it stays flat at 7 % as at 11.7 %; camber scales with thickness.
-// Checked (Python twin): resampling + max-thickness/camber recovery matches each published
-// value to within rounding for all four tables.
-// ---------------------------------------------------------------------------
 
 const E817_UPPER = [vector(1e-05, -5e-05), vector(0.00016, 0.00087), vector(0.00093, 0.00242), vector(0.00273, 0.00472), vector(0.00695, 0.00848), vector(0.0118, 0.01175), vector(0.02521, 0.0185), vector(0.04342, 0.02533), vector(0.06626, 0.03213), vector(0.09345, 0.03877), vector(0.12469, 0.04512), vector(0.15965, 0.05105), vector(0.19797, 0.05645), vector(0.23925, 0.06124), vector(0.28307, 0.06533), vector(0.32896, 0.06864), vector(0.37645, 0.07111), vector(0.42505, 0.07271), vector(0.47424, 0.07337), vector(0.52353, 0.07309), vector(0.57238, 0.07183), vector(0.6203, 0.06956), vector(0.66676, 0.06627), vector(0.71125, 0.06181), vector(0.75361, 0.05591), vector(0.79402, 0.04878), vector(0.83232, 0.04107), vector(0.86796, 0.03335), vector(0.90035, 0.02596), vector(0.92892, 0.01919), vector(0.95309, 0.01315), vector(0.97254, 0.00783), vector(0.98723, 0.00352), vector(0.99668, 0.00085), vector(1, 0)];
 const E817_LOWER = [vector(1e-05, -5e-05), vector(0.0002, -0.00096), vector(0.00103, -0.00248), vector(0.00293, -0.0047), vector(0.00729, -0.00827), vector(0.01232, -0.01136), vector(0.0259, -0.01749), vector(0.04416, -0.02344), vector(0.06686, -0.02906), vector(0.09368, -0.03419), vector(0.12428, -0.0386), vector(0.15828, -0.04202), vector(0.19548, -0.04404), vector(0.23588, -0.04452), vector(0.27935, -0.0436), vector(0.32555, -0.04142), vector(0.3741, -0.0381), vector(0.4246, -0.03383), vector(0.4766, -0.0288), vector(0.5296, -0.02328), vector(0.58304, -0.01752), vector(0.63631, -0.01183), vector(0.68875, -0.0065), vector(0.73965, -0.00181), vector(0.78823, 0.00199), vector(0.83369, 0.00472), vector(0.87521, 0.00627), vector(0.91198, 0.00662), vector(0.94322, 0.00585), vector(0.96811, 0.00417), vector(0.98594, 0.00216), vector(0.99652, 0.00059), vector(1, 0)];
