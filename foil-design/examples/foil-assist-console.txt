@@ -1,0 +1,161 @@
+# Foil design example: prone wave foil assist, 95 kg all-up
+# FeatureScript console with Log inputs on every feature, build 140
+# (wing 1.019, stab 4.001, mast 2.007, fuselage 4.011, performance 1.012, mold 2.068).
+# Exported with the stab's Height at 0, which puts the seat on the fuselage centreline: the
+# FUSELAGE_SEAT line shows the fuselage refusing both tapped holes because they would break
+# through the 19 mm tail. The guide's example uses Height -4, which fixes it. Paste this log to
+# the foil design assistant and it should point that out.
+
+WING_INPUTS: toolVersion=1.019; profile=NACA4; camber=3; camberPos=40; rootThickness=12; tipThickness=10; teThickness_mm=0.8; pointsPerSurface=40; planformMode=AREA_AR; targetArea_cm2=1000; aspectRatio=7.2; areaDefinition=PROJECTED; chordShape=SUPERELLIPSE; superN=2.5; endRatio=0.05; minTipOn=1; minTip_mm=1; stations=9; mirror=true; planformAlign=25; sweepTip_mm=100; sweepExp=2; tipDrop_mm=30; dropExp=2; rootDihedral_deg=0; washout_deg=1; washoutExp=2; thicknessExp=1.5; incidence_deg=1.5; pivot=QUARTER_CHORD; tipCap=TAPERED; capLength_mm=15; capEnd=25; polarSource=BUILTIN; socketOn=true; tubeDia_mm=24; tubeClearance_mm=0.2; socketWall_mm=5; socketBlend_mm=70; socketRearExt_mm=20; nacelleRearFair_mm=25; socketDepth_mm=40; socketPins=1; socketPinBolt=M6; socketPinDia_mm=6.5; socketPinPitch_mm=35
+STAB_INPUTS: toolVersion=4.001; profile=NACA4; camber=0; camberPos=40; rootThickness=10; tipThickness=8; teThickness_mm=0.6; pointsPerSurface=36; planformMode=AREA_AR; targetArea_cm2=165; aspectRatio=7.5; areaDefinition=PROJECTED; chordShape=SUPERELLIPSE; superN=2.5; endRatio=0.08; minTipOn=1; minTip_mm=1; stations=11; mirror=true; planformAlign=50; sweepTip_mm=30; sweepExp=2; tipDrop_mm=20; dropExp=2; rootDihedral_deg=0; washout_deg=0; washoutExp=1; thicknessExp=1.5; incidence_deg=-1.5; pivot=QUARTER_CHORD; tipCap=TAPERED; capLength_mm=8; capEnd=30; polarSource=ANALYTIC; arm_mm=660; height_mm=0; pivotZ_mm=-5.8; stabLink=LINKED; linkAreaRatio=0.18; linkAROffset=-1.5; linkThicknessOffset=-2; linkDecalage_deg=3; padOn=true; padSide=TOP; padWidth_mm=22; padHeight_mm=6; flatStart_mm=-5; tailOn=true; tailStart_mm=55; tailEnd_mm=95; tailEndWidth_mm=4; tailEndThick_mm=6; stabBolts=2; bolt1At_mm=0; boltPitch_mm=35; bolt=M5; boltDia_mm=5.4; boltCsk=true
+MAST_INPUTS: toolVersion=2.007; mastHeight_mm=750; topChord_mm=110; taperSide=SYMMETRIC; topThick_mm=22; thickenFromPct=60; mastWidth_mm=100; mastThick_mm=16; mastTe_mm=0.8; mastPoints=36; mastX_mm=150; baseHeight_mm=10; podOn=true; podDia_mm=63; podTilt_deg=0; podHeight_mm=550; podNoseStartPct=5; podFairLength_mm=90; podBlendHeightPct=100; podAft_mm=10; cavDia_mm=20; cavLength_mm=10; plateLength_mm=165; plateWidth_mm=120; plateThick_mm=10; trackSpacing_mm=90; boltsPerRow=2; boltPitch_mm=120; bolt=M8; boltDia_mm=8.5; countersink=true; rootFillet_mm=12
+MAST_FILLET: 2 seam edges at Z 760 mm; edge 230 mm long, X 145..255, Y -11.1..11.1; edge 0.8 mm long, X 255..255, Y -0.4..0.4 | OK: long edges only, no propagation at 12 mm
+FUSELAGE_INPUTS: toolVersion=4.011; fusParAft_mm=40; fusTailDia_mm=19; overhang_mm=45; tipLength_mm=40; seatBlock=1; seatMargin_mm=3; stabBoltDia_mm=4.2; boltDepth_mm=10; pocketOn=true; pocketClearance_mm=0.2; matchWingPins=true
+FUSELAGE_SEAT: | seats on the stab's mount contour, X 640-755, pad plane Z 3.7 mm (0 mm under the axis), tip over the stab's tail to X 755 | stab block 22 x 58 mm under the flat of the pad, 0 of 2 tapped holes 4.2 mm for M5; boltX_mm=[] | Conflicts (fix in the named feature): stab bolt at X 660 mm skipped - the body is only 9.5 mm deep there and a 10 mm hole would break through by 0.5 mm. Fix: Bolt depth to 8.5 mm or less, or lower Foil stabiliser's Height by 1.5 mm · stab bolt at X 695 mm skipped - the body is only 9.5 mm deep there and a 10 mm hole would break through by 0.5 mm. Fix: Bolt depth to 8.5 mm or less, or lower Foil stabiliser's Height by 1.5 mm
+===== FOIL PERFORMANCE =====
+PERFORMANCE_INPUTS: toolVersion=1.012; mass_kg=95; extMoment_Nm=0; density=1025; waterTemp_C=20; depth_mm=350; vTakeoff_kmh=15; vCruise_kmh=20; vMax_kmh=32; vStep_kmh=1; clMax=1; laminar_pct=0; otherDrag_cm2=0; loadFactor_g=4; capStress_MPa=450; capWidth_pct=35; propOn=1; propDia_mm=160; propPD=0.8; propEAR=0.3; propBlades=3; motorKv=140; cells=10; gearRatio=1; currentLimit_A=120; windingR_mOhm=50; gearEff_pct=100; escEff_pct=97; packAh=20; usable_pct=90
+Water: rho 1025 kg/m3, nu 1.068e-6 m2/s, mass 95 kg
+Wing: S 1000 cm2, AR 7.2, CLa 5.037/rad, CL0 0.383, span efficiency e 0.995, Cm0 -0.0797, ac 27 mm
+Stab: S 180 cm2, AR 5.7, CLa 4.461/rad, CL0 -0.117, ac 670 mm, downwash de/da 0.445
+Neutral point 79.2 mm aft of wing root pivot
+Stall 13.8 km/h (section CL max 1.27 from polar at Re 0.48M)
+Cavitation number at 32 km/h, depth 350 mm: 2.53 (cavitation starts where -Cp min exceeds this)
+Mast: 340 mm of 750 mm submerged at this depth, chord 102 mm, t/c 16%, at cruise 8.5 N incl. spray 0.97 N; motor pod 63 x 105 mm, 0% under water
+Layout: foil assist - motor mode when ridden deep, pump/wave mode when ridden shallow with the pod out
+  pump/wave mode (pod OUT, wing depth <= 470 mm): cruise drag 56.3 N, L/D 16.55, 313 W to sustain from pumping or the wave, mast 11.1 N
+  motor mode (pod IN, wing depth >= 650 mm): cruise drag = thrust needed 63.3 N, L/D 14.72, power at the prop 352 W, mast 15.1 N, fuselage/pod 5.8 N
+Fuselage: 630 mm long, 29.2 mm dia, wetted 474 cm2, fuselage + pod at cruise 2.8 N
+Root bending at 4g: 354 Nm, lift centroid 182 mm from centreline, section depth 16.7 mm, cap width 49 mm -> cap thickness 1.03 mm each
+Propulsion (B-series open water, +/- 20 %): prop 160 mm, P/D 0.8, EAR 0.3, 3 blades; 140 kV, 10S (37 V), gear 1:1, limit 120 A, winding 50 mOhm; pack 666 Wh usable
+  solved at ride depth 650 mm (pod-in depth: the prop is not fully under water at Wing depth)
+  static, full power: 2728 prop rpm, 404 N (41.2 kgf) thrust; no-load prop speed 5180 rpm, pitch speed 39.8 km/h
+  cruise 20 km/h: thrust = drag 63.2 N (6.44 kgf), 2603 prop rpm, J 0.8, prop efficiency 64%, shaft 552 W, motor 34.3 A, throttle 55%, battery 19.4 A / 718 W, overall 49%
+  35.9 Wh/km, range 18.5 km / 56 min powered at cruise (pump/wave riding with the pod out draws nothing, so a mixed session goes further); top speed 37.4 km/h (full-power thrust = drag)
+  thrust vector: pod tilt 0 deg nose-down, so at cruise it points 2.6 deg to the flow (2.9 N vertical at the pod, -0.6 Nm about the pivot); at take-off 7.3 deg, 8.8 N
+  thrust line at the pod axis, Z 560 mm; drag centroid at cruise Z 110 mm -> couple -28.4 Nm (nose down), a pure couple so the CG height does not matter; trim CG 13.6 -> 44.5 mm, static margin 53 -> 28.1% MAC; lowest under power -0.6% at 15 km/h
+  not modelled: ploughing before lift-off, cavitation/ventilation of the prop, pod and mast wake, acceleration (thrust above drag), and the prop's efficiency loss in oblique inflow (its axis is off the flow by thrust_angle_deg)
+
+speed_kmh,alpha_deg,CL_wing,CL_stab,Re_wing_M,drag_N,drag_induced_N,drag_profile_N,L_D,power_W,trim_cg_mm,static_margin_pct,max_local_cl_pct,drag_mast_N,drag_body_N,thrust_N,prop_rpm,J,eta_prop_pct,motor_A,throttle_pct,batt_A,batt_W,Wh_per_km,max_thrust_N,in_limits,thrust_couple_Nm,thrust_angle_deg,thrust_vert_N,trim_cg_powered_mm,static_margin_powered_pct
+15,7.44,1.037,0.054,0.483,63.1,42.4,14,14.77,263,42.3,29.8,86,5,1.6,68.5,2156,0.725,69.4,30.8,46,14.6,539,35.9,346,1,-33.9,7.3,8.8,80,-0.6
+16,6.12,0.921,-0.004,0.515,59.3,38,13.8,15.71,264,37.2,33.9,76,5.6,1.8,65.5,2231,0.747,68.5,30.8,47,15,555,34.7,340.8,1,-31.8,6,6.9,72.4,5.5
+17,5.02,0.824,-0.051,0.547,56.7,34.4,13.9,16.44,268,31.8,38.3,68,6.3,2,63.7,2315,0.765,67.4,31.2,49,15.7,582,34.2,335.5,1,-30.4,5,5.5,65.2,11.4
+18,4.1,0.743,-0.091,0.579,55,31.5,14.3,16.94,275,26.1,43,62,7,2.3,62.8,2406,0.779,66.1,31.9,51,16.7,618,34.3,330.2,1,-29.3,4.1,4.5,58.2,17
+19,3.32,0.675,-0.124,0.611,54,29,14.8,17.25,285,20,47.9,56,7.7,2.5,62.7,2502,0.791,64.8,33,53,17.9,664,34.9,324.8,1,-28.7,3.3,3.6,51.3,22.6
+20,2.66,0.617,-0.153,0.644,53.7,27,15.5,17.36,298,13.6,53,52,8.5,2.8,63.2,2603,0.8,63.6,34.3,55,19.4,718,35.9,319.4,1,-28.4,2.6,2.9,44.5,28.1
+21,2.08,0.566,-0.178,0.676,53.8,25.3,16.2,17.33,314,6.9,58.5,47,9.2,3,64.2,2707,0.808,62.4,35.9,57,21.1,781,37.2,314,1,-28.3,2.1,2.3,37.6,33.6
+22,1.59,0.523,-0.199,0.708,54.3,23.9,17.1,17.16,332,-0.1,64.2,44,10.1,3.3,65.7,2813,0.815,61.3,37.6,59,23,852,38.7,308.6,1,-28.5,1.6,1.8,30.7,39.3
+23,1.16,0.485,-0.218,0.74,55.1,22.7,17.9,16.9,352,-7.5,70.2,41,10.9,3.6,67.5,2922,0.82,60.3,39.6,62,25.2,932,40.5,303.2,1,-28.8,1.1,1.4,23.6,45
+24,0.78,0.451,-0.234,0.772,56.3,21.8,18.8,16.56,375,-15.2,76.4,38,11.8,3.8,69.6,3032,0.825,59.4,41.7,64,27.6,1020,42.5,297.7,1,-29.3,0.8,0.9,16.3,50.9
+25,0.44,0.422,-0.249,0.804,57.6,21,19.8,16.17,400,-23.3,82.9,36,12.7,4.1,72,3143,0.828,58.6,43.9,67,30.2,1116,44.6,292.2,1,-29.9,0.4,0.6,8.9,56.9
+26,0.14,0.396,-0.262,0.837,59.2,20.3,20.7,15.74,427,-31.6,89.6,34,13.7,4.4,74.7,3256,0.832,57.8,46.3,69,33,1221,47,286.7,1,-30.6,0.1,0.2,1.2,63.1
+27,-0.12,0.372,-0.273,0.869,60.9,19.8,21.7,15.29,457,-40.3,96.7,32,14.6,4.8,77.5,3369,0.835,57.1,48.8,72,36.1,1335,49.4,281.2,1,-31.4,-0.1,-0.2,-6.7,69.5
+28,-0.36,0.351,-0.283,0.901,62.8,19.5,22.6,14.83,489,-49.3,104,30,15.7,5.1,80.5,3483,0.837,56.4,51.5,74,39.4,1458,52.1,275.6,1,-32.2,-0.4,-0.5,-14.8,76
+29,-0.57,0.333,-0.293,0.933,64.9,19.2,23.6,14.36,522,-58.7,111.5,28,16.7,5.4,83.7,3598,0.84,55.8,54.3,77,43,1589,54.8,270,1,-33.2,-0.6,-0.8,-23.2,82.8
+30,-0.76,0.316,-0.301,0.965,67,19,24.5,13.91,558,-68.4,119.4,27,17.8,5.8,87.1,3713,0.842,55.3,57.1,79,46.8,1730,57.7,264.4,1,-34.2,-0.8,-1.2,-31.8,89.8
+31,-0.94,0.301,-0.308,0.997,69.2,18.8,25.4,13.46,596,-78.4,127.4,26,18.9,6.1,90.5,3828,0.844,54.8,60.1,82,50.8,1881,60.7,255,1,-35.2,-0.9,-1.5,-40.8,97
+32,-1.09,0.287,-0.315,1.03,72.3,18.8,27,12.88,643,-88.7,135.8,25,20,6.5,94.9,3946,0.845,54.4,63.5,85,55.5,2052,64.1,234.9,1,-36.7,-1.1,-1.8,-49.5,104.1
+===== END =====
+MOLD_INPUTS: toolVersion=2.068; moldSource=WING; partsGroup=OFF; splitStations=15; tipBias=2; templatesOn=1; udModulus=120; wovenModulus=60; towModulus=30; mastSideG=1; flangeWidth_mm=25; baseThick_mm=20; plugOn=1; plugExt_mm=20; conesOn=1; coneDia_mm=5; coneTaper_deg=6; coneWeb_mm=1; grooveOn=1; landWidth_mm=3; grooveWidth_mm=4; grooveDepth_mm=1.5; printerX_mm=250; printerY_mm=250; printerZ_mm=250; tileMargin_mm=5; staggerJoints=1; keyStyle=PRINTED; keyHeight_mm=8; keyDraft_deg=12; pinDia_mm=12; pinFit_mm=0.2; keysOn=1; keyDia_mm=14; skinPlies=2; skinGsm=200; udGsm=300; capWidthPct=40; capThickPct=60; towTex=800; fibreVolPct=50; overchargePct=8; clothWastePct=25; resinWastePct=40; capRunOut_mm=0; tabPlies=4; tabLength_mm=50; shearAllow=30
+UD_CAP_PLIES (per cap, cut 2 - one for each face; outermost first; length root-to-root across the centre, width at root / at the end): ply,length_mm,width_root_mm,width_end_mm
+1,819,56,21
+2,819,56,21
+3,819,56,21
+4,819,56,21
+5,798,56,26
+6,778,56,29
+7,757,56,32
+8,737,56,34
+9,696,56,38
+10,655,56,41
+11,614,56,44
+12,553,56,47
+13,471,56,50
+14,368,56,53
+15,246,56,55
+LAYUP: layup 1036 cm3, 1.59 kg cured at Vf 50% | skin 2 x 200 gsm each face (0.22 mm/ply): 0.43 m2, 92 g | UD caps 300 gsm (0.34 mm/ply), 40% chord: 15 plies per cap at the root to 4 at the tip (cut 2 of each), 819 mm long, 1.01 m2, 304 g | tow 800 tex: 600 g, 750 m | resin 596 g in the part, mix 834 g | buy 0.53 m2 woven, 1.27 m2 UD (+25%), cut list on the console
+STIFFNESS: 4 g: tip deflection 6.5 mm (1.6 mm at 1 g), root EI 2459 N m2, root cap stress 137 MPa
+TEMPLATES (left to right on the plate, +5 mm margin; the 3 mm holes under each shape (rows of 10) are its cut count; export the plate's top face as DXF):
+1: woven skin - one outline, cut 4 (2 per face; turn the weave 45 deg on the outer ply of each face for torsion)
+2: UD ply 1 (833 mm, cut 2)
+3: UD ply 2 (833 mm, cut 2)
+4: UD ply 3 (833 mm, cut 2)
+5: UD ply 4 (833 mm, cut 2)
+6: UD ply 5 (804 mm, cut 2)
+7: UD ply 6 (790 mm, cut 2)
+8: UD ply 7 (776 mm, cut 2)
+9: UD ply 8 (747 mm, cut 2)
+10: UD ply 9 (705 mm, cut 2)
+11: UD ply 10 (662 mm, cut 2)
+12: UD ply 11 (619 mm, cut 2)
+13: UD ply 12 (562 mm, cut 2)
+14: UD ply 13 (477 mm, cut 2)
+15: UD ply 14 (378 mm, cut 2)
+16: UD ply 15 (250 mm, cut 2)
+MOLD_INPUTS: toolVersion=2.068; moldSource=STAB; partsGroup=OFF; splitStations=20; tipBias=3; templatesOn=1; udModulus=120; wovenModulus=60; towModulus=30; mastSideG=1; flangeWidth_mm=25; baseThick_mm=20; plugOn=1; plugExt_mm=20; conesOn=1; coneDia_mm=5; coneTaper_deg=6; coneWeb_mm=1; grooveOn=1; landWidth_mm=3; grooveWidth_mm=4; grooveDepth_mm=1.5; printerX_mm=250; printerY_mm=250; printerZ_mm=250; tileMargin_mm=5; staggerJoints=1; keyStyle=PRINTED; keyHeight_mm=8; keyDraft_deg=12; pinDia_mm=12; pinFit_mm=0.2; keysOn=1; keyDia_mm=14; skinPlies=2; skinGsm=200; udGsm=300; capWidthPct=40; capThickPct=60; towTex=800; fibreVolPct=50; overchargePct=8; clothWastePct=25; resinWastePct=40; capRunOut_mm=0; tabPlies=4; tabLength_mm=50; shearAllow=30
+UD_CAP_PLIES (per cap, cut 2 - one for each face; outermost first; length root-to-root across the centre, width at root / at the end): ply,length_mm,width_root_mm,width_end_mm
+1,304,26,12
+2,297,26,14
+3,274,26,17
+4,228,26,21
+5,167,26,24
+LAYUP: layup 85 cm3, 0.13 kg cured at Vf 50% | skin 2 x 200 gsm each face (0.22 mm/ply): 0.08 m2, 17 g | UD caps 300 gsm (0.34 mm/ply), 40% chord: 5 plies per cap at the root to 1 at the tip (cut 2 of each), 304 mm long, 0.06 m2, 19 g | tow 800 tex: 46 g, 57 m | resin 49 g in the part, mix 69 g | buy 0.1 m2 woven, 0.08 m2 UD (+25%), cut list on the console
+STIFFNESS: 4 g: tip deflection 1.9 mm (0.5 mm at 1 g), root EI 67 N m2, root cap stress 100 MPa
+STAB_CONES: padSide=1; padZ_mm=3.75; baseX_mm=660; baseZ_mm=-5.8; bolts=2; bolt0: X_mm=660 farZ_mm=-9.17 h_mm=11.92 rTip_mm=1.25; bolt1: X_mm=695 farZ_mm=-6.9 h_mm=9.65 rTip_mm=1.49; made=2
+TEMPLATES (left to right on the plate, +5 mm margin; the 3 mm holes under each shape (rows of 10) are its cut count; export the plate's top face as DXF):
+1: woven skin - one outline, cut 4 (2 per face; turn the weave 45 deg on the outer ply of each face for torsion)
+2: UD ply 1 (317 mm, cut 2)
+3: UD ply 2 (312 mm, cut 2)
+4: UD ply 3 (284 mm, cut 2)
+5: UD ply 4 (241 mm, cut 2)
+6: UD ply 5 (176 mm, cut 2)
+MOLD_INPUTS: toolVersion=2.068; moldSource=MAST; partsGroup=OFF; splitStations=15; tipBias=2; templatesOn=1; udModulus=120; wovenModulus=60; towModulus=30; mastSideG=1; flangeWidth_mm=25; baseThick_mm=20; plugOn=1; plugExt_mm=20; conesOn=1; coneDia_mm=5; coneTaper_deg=6; coneWeb_mm=1; grooveOn=1; landWidth_mm=3; grooveWidth_mm=4; grooveDepth_mm=1.5; printerX_mm=250; printerY_mm=250; printerZ_mm=250; tileMargin_mm=5; staggerJoints=1; keyStyle=PRINTED; keyHeight_mm=8; keyDraft_deg=12; pinDia_mm=12; pinFit_mm=0.2; keysOn=1; keyDia_mm=14; skinPlies=2; skinGsm=200; udGsm=300; capWidthPct=40; capThickPct=60; towTex=800; fibreVolPct=50; overchargePct=8; clothWastePct=25; resinWastePct=40; capRunOut_mm=0; tabPlies=4; tabLength_mm=50; shearAllow=30
+UD_CAP_PLIES (per cap, cut 2 - one for each face; outermost first; length from the plate down PLUS 47 mm run-out folded over the fillet onto the plate - fold at 47 mm from the plate end; width at the plate / at the end): ply,length_mm,width_plate_mm,width_end_mm
+1,797,44,40
+2,797,44,40
+3,797,44,40
+4,797,44,40
+5,797,44,40
+6,797,44,40
+7,797,44,40
+8,797,44,40
+9,797,44,40
+10,797,44,40
+11,797,44,40
+12,797,44,40
+13,797,44,40
+14,797,44,40
+15,797,44,40
+16,253,44,43
+17,216,44,43
+18,178,44,43
+19,141,44,44
+20,103,44,44
+UD_TABS: 4 per face (cut 8) x 97 mm x 44 mm, fold at 47 mm (plate leg), 50 mm down the mast; lay one after every 5 cap plies, outermost first
+LAYUP: layup 1250 cm3, 1.92 kg cured at Vf 50% | skin 2 x 200 gsm each face (0.22 mm/ply): 1.23 m2, 267 g incl. the plate's fill: 40 woven plies inside its skins, 171 g | UD caps 300 gsm (0.34 mm/ply), 40% chord: 20 plies per cap at the plate to 15 at the fuselage end (cut 2 of each), 750 mm long, 1.12 m2, 335 g | tabs 4 per face x 97 x 44 mm UD, fold at 47 mm, one after every 5 cap plies; they take 2.7 mm of the 8.4 mm tow core at the plate over 50 mm | tow 800 tex: 600 g, 750 m | resin 719 g in the part, mix 1007 g | buy 1.54 m2 woven, 1.39 m2 UD (+25%), cut list on the console
+STIFFNESS: mast side 1 g at the fuselage, plate fixed: F=932 N, deflection at the fuselage 53.3 mm, cap stress at the plate 198 MPa, worst 243 MPa at 488 mm, track bolt tension 3.88 kN each, junction: cap force 38.53 kN, shear 2.07 MPa over 47 mm x (1 + 2 x 4 tabs), allow 15, needs 6 mm, plate bending 96 MPa, fillet 12 mm
+MAST_PLUG: cores=6; depth_mm=35; handle_mm=20
+TEMPLATES (left to right on the plate, +5 mm margin; the 3 mm holes under each shape (rows of 10) are its cut count; export the plate's top face as DXF):
+1: mast skin (one face, plate end at the bottom of the strip, cut 4)
+2: plate (cut 44: 4 skins + 40 fill)
+3: UD ply 1 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+4: UD ply 2 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+5: UD ply 3 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+6: UD ply 4 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+7: UD ply 5 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+8: UD ply 6 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+9: UD ply 7 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+10: UD ply 8 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+11: UD ply 9 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+12: UD ply 10 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+13: UD ply 11 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+14: UD ply 12 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+15: UD ply 13 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+16: UD ply 14 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+17: UD ply 15 (750 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+18: UD ply 16 (206 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+19: UD ply 17 (169 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+20: UD ply 18 (131 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+21: UD ply 19 (94 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+22: UD ply 20 (56 mm from the plate + 47 mm run-out, fold at the notches, cut 2)
+23: UD tab (47 mm on the plate + 50 mm down the mast, fold at the notches, cut 8)
+  Result: Regeneration complete
