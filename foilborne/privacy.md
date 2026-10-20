@@ -48,4 +48,4 @@ The app is not aimed at children and collects no personal information from anyon
 
 If this policy changes, this page will show the new version and its date.
 
-Questions or requests: open an issue at <https://github.com/jb69/Foil-Design-Tool/issues>.
+Questions or requests: email foilborne.app@gmail.com, or open an issue at <https://github.com/jb69/Foil-Design-Tool/issues>.

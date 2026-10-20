@@ -10,7 +10,7 @@ By Jason Bird (JB69).
 
 ## Support
 
-For questions, problems or ideas, open an issue at <https://github.com/jb69/Foil-Design-Tool/issues>. If something went wrong, the app can send its logs with your question: on the iPhone, open Settings, then Diagnostics, then *Share diagnostics*.
+For questions, problems or ideas, email foilborne.app@gmail.com or open an issue at <https://github.com/jb69/Foil-Design-Tool/issues>. If something went wrong, the app can send its logs with your question: on the iPhone, open Settings, then Diagnostics, then *Share diagnostics*.
 
 - **Restoring purchases:** on the iPhone, open Disciplines and tap *Restore purchases*.
 - **Offer codes:** on the iPhone, open Disciplines and tap *Redeem a code*.
