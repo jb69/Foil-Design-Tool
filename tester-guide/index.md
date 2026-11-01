@@ -4,7 +4,7 @@ title: Foilborne tester guide
 
 # Foilborne tester guide
 
-How to set up Foilborne on your iPhone and Apple Watch, what to test, and how to send feedback.
+How to set up Foilborne on your iPhone, with or without an Apple Watch, what to test, and how to send feedback. For test build 91 (version 1.0.2).
 
 - [English](tester-guide.pdf)
 - [Français](tester-guide.fr.pdf)
